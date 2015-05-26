@@ -58,13 +58,20 @@
         }
       })();
 
-      var container, stats;
+      var container, stats, angle_info;
       var camera, scene, renderer;
       var group;
       var mouseX = 0, mouseY = 0;
+      var DRAG_ON_PROGRESS = false, DRAG_START_OPTS;
+      var ROTATION_STEP = 0.004;
 
       var windowHalfX = window.innerWidth / 2;
       var windowHalfY = window.innerHeight / 2;
+
+      var raycaster = new THREE.Raycaster();
+      var mouse = new THREE.Vector2(),
+          offset = new THREE.Vector3(),
+          INTERSECTED, SELECTED;
 
       var texture_src = 'img/textures/dashboard_device_map.png';
 
@@ -77,8 +84,8 @@
 
         if (features.webgl ){
           renderer = new THREE.WebGLRenderer({
-            antialias: true, // to get smoother output
-            preserveDrawingBuffer: true // to allow screenshot
+            antialias: !true, // to get smoother output
+            preserveDrawingBuffer: !true // to allow screenshot
           });
 
           var soft_light = new THREE.AmbientLight(0xAAAAAA);
@@ -120,7 +127,17 @@
         stats.domElement.style.top = '0px';
         container.appendChild( stats.domElement );
 
+        angle_info = document.createElement('div');
+        angle_info.style.position = 'absolute';
+        angle_info.style.left = '100px';
+        angle_info.style.top = '0';
+        container.appendChild(angle_info);
+
+
+
+        document.addEventListener('mousedown', onDocumentMouseDown, false);
         document.addEventListener('mousemove', onDocumentMouseMove, false);
+        document.addEventListener('mouseup', onDocumentMouseUp, false);
         //renderer.domElement.addEventListener( 'mousemove', onDocumentMouseMove, false );
 
         window.addEventListener('resize', onWindowResize, false);
@@ -138,11 +155,78 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
       }
 
+      function onDocumentMouseDown(event) {
+        DRAG_ON_PROGRESS = true;
+        DRAG_START_OPTS = {
+          x: event.clientX - windowHalfX,
+          y: event.clientY - windowHalfY,
+          rotation: {x: group.children[0].rotation.x, y: group.children[0].rotation.y}
+        }
+        var intsc;
+
+        if (intsc = getIntersection(event)) {
+          var obj = intsc[0];;
+          var point = intsc[1].point;
+          //point,
+          var decart_coords = obj.worldToLocal(point);
+          var spherical_coords = dec2shper(decart_coords);
+
+          //console.info('phi:', rad2deg(spherical_coords.phi), 'theta:', rad2deg(spherical_coords.theta));
+          angle_info.innerHTML = rad2de(DRAG_START_OPTS.rotation.x) + '; &theta; = ' + rad2deg(spherical_coords.theta) + '; &phi; = ' +  rad2deg(spherical_coords.phi);
+        }
+      }
+      function onDocumentMouseUp(event) {
+        DRAG_ON_PROGRESS = false;
+      }
+
+
+      function getIntersection(event) {
+        // Find intersection with globe
+        mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+        mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+        // update the picking ray with the camera and mouse position
+        raycaster.setFromCamera(mouse, camera);
+
+        var intersects = raycaster.intersectObjects(group.children);
+        if (intersects.length > 0) {
+          var intersection = intersects[0];
+          if (INTERSECTED != intersection.object) {
+
+            if (INTERSECTED) {
+              INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+            }
+
+            INTERSECTED = intersection.object;
+            INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
+          }
+
+          container.style.cursor = 'pointer';
+          //console.info('INTERSECTED', intersection.point);
+          //var pixelData = canvas.getContext('2d').getImageData(x, y, 1, 1).data;
+          return [INTERSECTED, intersection];
+        } else {
+          if (INTERSECTED) {
+            INTERSECTED.material.color.setHex(INTERSECTED.currentHex);
+          }
+
+          INTERSECTED = null;
+
+          container.style.cursor = 'auto';
+          return false;
+        }
+        //console.info('INTERSECTED', INTERSECTED.currentHex);
+      }
+
       function onDocumentMouseMove(event) {
         event.preventDefault();
 
-        mouseX = ( event.clientX - windowHalfX );
-        mouseY = ( event.clientY - windowHalfY );
+        mouseX = (event.clientX - windowHalfX);
+        mouseY = (event.clientY - windowHalfY);
+
+        /*
+          getIntersection
+        */
       }
 
       function animate() {
@@ -153,16 +237,51 @@
       }
 
       function render() {
-        camera.position.x += (mouseX - camera.position.x) * 0.05;
-        camera.position.y += (- mouseY - camera.position.y) * 0.05;
-        camera.lookAt( scene.position );
+        var earth = group.children[0];
+        if (!DRAG_ON_PROGRESS) {
+          earth.rotation.y += ROTATION_STEP;
+          camera.position.x += (mouseX - camera.position.x) * 0.05;
+          //camera.position.y += (- mouseY - camera.position.y) * 0.05;
 
-        group.rotation.y += 0.004;
+          // Reset the x rotation if no free move
+          if (earth.rotation.x !== 0) {
+            var DOUBLE_PI = (Math.PI * 2);
+            // Normalize angle
+            if (Math.abs(earth.rotation.x) > DOUBLE_PI) {
+              earth.rotation.x = earth.rotation.x % DOUBLE_PI;
+            }
+
+            // Reset if angle is too small
+            if (Math.abs(earth.rotation.x) < ROTATION_STEP) {
+              earth.rotation.x = 0;
+            }
+            earth.rotation.x += ROTATION_STEP * (earth.rotation.x > 0 ? -1 : 1);
+          }
+          //angle_info.textContent = 'angle: ' + earth.rotation.y;
+        } else {
+          earth.rotation.y = DRAG_START_OPTS.rotation.y + ((mouseX - DRAG_START_OPTS.x) * (ROTATION_STEP / 2));
+          earth.rotation.x = DRAG_START_OPTS.rotation.x + ((mouseY - DRAG_START_OPTS.y) * (ROTATION_STEP / 2));
+
+        }
+        //console.info(earth.rotation.y)
+        camera.lookAt( scene.position );
 
         renderer.render(scene, camera );
       }
 
       init() && animate();
+
+      // Convert decart coordinats to shperical
+      function dec2shper(vector) {
+        return {
+          r: Math.sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z),
+          theta: Math.atan(Math.sqrt(vector.x * vector.x + vector.y * vector.y) / vector.z),
+          phi: Math.atan(vector.y / vector.x)
+        }
+      }
+      function rad2deg(rad) {
+        return rad * 180 / Math.PI;
+      }
     })();
   </script>
 </body>
