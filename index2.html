@@ -1,0 +1,193 @@
+<DOCTYPE html>
+<html>
+<head>
+  <title>Earth Demo</title>
+  <meta charset="utf-8">
+  <script src="vendor/threejs/build/three.min.js"></script>
+  <script src="vendor/threejs/examples/js/renderers/Projector.js"></script>
+  <script src="vendor/threejs/examples/js/renderers/CanvasRenderer.js"></script>
+
+  <script src="vendor/threejs/examples/js/libs/stats.min.js"></script>
+
+  <script type="text/javascript">
+  </script>
+  <style type="text/css">
+      html {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+
+        background-color: #eee;
+        color: #808080;
+        font-family:Monospace;
+        font-size:13px;
+        text-align:center;
+      }
+
+      #info {
+        position: absolute;
+        top: 0px; width: 100%;
+        padding: 5px;
+      }
+
+      a {
+        color: #0080ff;
+      }
+    </style>
+
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+</head>
+<body>
+  <forma>
+  <div id="container"></div>
+
+  <script>
+    ;(function(){
+      var container, stats;
+      var camera, scene, renderer;
+      var group;
+      var cloudsMesh;
+      var mouseX = 0, mouseY = 0;
+
+      var windowHalfX = window.innerWidth / 2;
+      var windowHalfY = window.innerHeight / 2;
+
+      var texture_src = 'img/textures/land_ocean_ice_cloud_2048.jpg';
+      var texture_src = 'img/textures/earthmap1k.jpg';
+
+      var earth_textures = {
+        diffuse: 'img/textures/earthmap1k.jpg',
+        bump: 'img/textures/earthbump1k.jpg',
+        specular: 'img/textures/earthspec1k.jpg',
+        clouds: 'img/textures/earthcloudmap.png',
+        clouds_transp: 'img/textures/earthcloudmaptrans.jpg'
+      };
+
+      function init() {
+        container = document.getElementById( 'container' );
+
+        scene = new THREE.Scene();
+        group = new THREE.Group();
+        scene.add(group);
+
+        // earth
+/*
+        var loader = new THREE.TextureLoader();
+        loader.load(texture_src, function ( texture ) {
+
+          var geometry = new THREE.SphereGeometry(200, 20, 20);
+
+          var material = new THREE.MeshBasicMaterial( { map: texture, overdraw: 0.5 } );
+          var mesh = new THREE.Mesh( geometry, material );
+          group.add( mesh );
+
+        } );
+
+        renderer = new THREE.CanvasRenderer();
+        renderer.setClearColor(0xffffff);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize( window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+
+        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 2000);
+        camera.position.z = 500;
+
+*/
+
+
+        var geometry = new THREE.SphereGeometry(200, 32, 32);
+        var material = new THREE.MeshPhongMaterial({
+          map: THREE.ImageUtils.loadTexture(earth_textures.diffuse),
+          bumpMap: THREE.ImageUtils.loadTexture(earth_textures.bump),
+          bumpScale: 20,
+          specularMap: THREE.ImageUtils.loadTexture(earth_textures.specular),
+          specular: new THREE.Color('grey')
+        })
+        var earthMesh  = new THREE.Mesh(geometry, material);
+
+        group.add(earthMesh);
+
+
+        var geometry = new THREE.SphereGeometry(210, 32, 32);
+        var material = new THREE.MeshPhongMaterial({
+          map: THREE.ImageUtils.loadTexture(earth_textures.clouds),
+          //side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.8
+        })
+        cloudsMesh  = new THREE.Mesh(geometry, material);
+        scene.add(cloudsMesh);
+
+        var soft_light = new THREE.AmbientLight(0x888888);
+        scene.add(soft_light);
+
+        var sun_light = new THREE.DirectionalLight(0xcccccc, 0.5);
+        sun_light.position.set(5, 3, 5);
+        scene.add(sun_light);
+
+
+
+        renderer = new THREE.WebGLRenderer();
+        //renderer = new THREE.CanvasRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        camera  = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 2000 );
+        camera.position.z = 500;
+
+
+        stats = new Stats();
+        stats.domElement.style.position = 'absolute';
+        stats.domElement.style.top = '0px';
+        container.appendChild( stats.domElement );
+
+        document.addEventListener('mousemove', onDocumentMouseMove, false);
+
+        window.addEventListener('resize', onWindowResize, false);
+      }
+
+      function onWindowResize() {
+        windowHalfX = window.innerWidth / 2;
+        windowHalfY = window.innerHeight / 2;
+
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+
+        renderer.setSize( window.innerWidth, window.innerHeight );
+      }
+
+      function onDocumentMouseMove(event) {
+        mouseX = ( event.clientX - windowHalfX );
+        mouseY = ( event.clientY - windowHalfY );
+      }
+
+      //
+      function animate() {
+        requestAnimationFrame(animate);
+
+        render();
+        stats.update();
+      }
+
+      function render() {
+        camera.position.x += (mouseX - camera.position.x) * 0.05;
+        camera.position.y += (- mouseY - camera.position.y) * 0.05;
+        camera.lookAt( scene.position );
+
+        group.rotation.y += 0.0004;
+
+        cloudsMesh.rotation.y += 0.0007;
+
+        renderer.render(scene, camera );
+      }
+
+      init();
+      animate();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<DOCTYPE html>
+<html>
+<head>
+  <title>Earth Demo</title>
+  <meta charset="utf-8">
+  <script src="vendor/threejs/build/three.min.js"></script>
+  <script src="vendor/threejs/examples/js/renderers/Projector.js"></script>
+  <script src="vendor/threejs/examples/js/renderers/CanvasRenderer.js"></script>
+
+  <script src="vendor/threejs/examples/js/libs/stats.min.js"></script>
+
+  <script type="text/javascript">
+  </script>
+  <style type="text/css">
+      html {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+
+        background-color: #eee;
+        color: #808080;
+        font-family:Monospace;
+        font-size:13px;
+        text-align:center;
+      }
+
+      #info {
+        position: absolute;
+        top: 0px; width: 100%;
+        padding: 5px;
+      }
+
+      a {
+        color: #0080ff;
+      }
+    </style>
+
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+</head>
+<body>
+  <forma>
+  <div id="container"></div>
+
+  <script>
+    ;(function(){
+
+      var features = (function(){
+        var canvas_elem = document.createElement('canvas');
+        var canvas_support = !!canvas_elem.getContext('2d');
+
+        return {
+          canvas: canvas_support,
+          canvastext: canvas_support && (canvas_elem.getContext('2d').fillText instanceof Function),
+          webgl: !!window.WebGLRenderingContext
+        }
+      })();
+
+      var container, stats;
+      var camera, scene, renderer;
+      var group;
+      var mouseX = 0, mouseY = 0;
+
+      var windowHalfX = window.innerWidth / 2;
+      var windowHalfY = window.innerHeight / 2;
+
+      var texture_src = 'img/textures/dashboard_device_map.png';
+
+      function init() {
+        container = document.getElementById( 'container' );
+        scene = new THREE.Scene();
+        group = new THREE.Group();
+
+        scene.add(group);
+
+        if (features.webgl ){
+          renderer = new THREE.WebGLRenderer({
+            antialias: true, // to get smoother output
+            preserveDrawingBuffer: true // to allow screenshot
+          });
+
+          var soft_light = new THREE.AmbientLight(0xAAAAAA);
+          scene.add(soft_light);
+
+          var sun_light = new THREE.DirectionalLight(0xcccccc, 0.4);
+          sun_light.position.set(5, 3, 5);
+          scene.add(sun_light);
+        } else if (features.canvas) {
+          renderer = new THREE.CanvasRenderer();
+        } else {
+          return false;
+        }
+        renderer.setClearColor(0xFFFCFB, 1);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+
+
+
+        // earth
+        var geometry = new THREE.SphereGeometry(200, 32, 32);
+        var material = new THREE.MeshPhongMaterial({
+          map: THREE.ImageUtils.loadTexture(texture_src),
+          overdraw: 0.5
+        })
+        var earthMesh  = new THREE.Mesh(geometry, material);
+
+        group.add(earthMesh);
+
+        // Camera
+        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 2000);
+        camera.position.z = 400;
+
+        container.appendChild(renderer.domElement);
+
+        // Stats
+        stats = new Stats();
+        stats.domElement.style.position = 'absolute';
+        stats.domElement.style.top = '0px';
+        container.appendChild( stats.domElement );
+
+        document.addEventListener('mousemove', onDocumentMouseMove, false);
+        //renderer.domElement.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+        window.addEventListener('resize', onWindowResize, false);
+
+        return true;
+      }
+
+      function onWindowResize() {
+        windowHalfX = window.innerWidth / 2;
+        windowHalfY = window.innerHeight / 2;
+
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      function onDocumentMouseMove(event) {
+        event.preventDefault();
+
+        mouseX = ( event.clientX - windowHalfX );
+        mouseY = ( event.clientY - windowHalfY );
+      }
+
+      function animate() {
+        requestAnimationFrame(animate);
+
+        render();
+        stats.update();
+      }
+
+      function render() {
+        camera.position.x += (mouseX - camera.position.x) * 0.05;
+        camera.position.y += (- mouseY - camera.position.y) * 0.05;
+        camera.lookAt( scene.position );
+
+        group.rotation.y += 0.004;
+
+        renderer.render(scene, camera );
+      }
+
+      init() && animate();
+    })();
+  </script>
+</body>
+</html>

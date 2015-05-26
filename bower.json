@@ -1,0 +1,23 @@
+{
+  "name": "coca",
+  "version": "0.0.0",
+  "authors": [
+    "Mykola Prymak <mykola.prymak@gmail.com>"
+  ],
+  "description": "coca earth demo",
+  "main": "index.html",
+  "moduleType": [
+    "amd"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "threejs": "*"
+  }
+}
