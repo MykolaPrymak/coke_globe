@@ -8,7 +8,8 @@
       canvas: canvas_support,
       canvastext: canvas_support && (canvas_elem.getContext('2d').fillText instanceof Function),
       webgl: !!window.WebGLRenderingContext,
-      isMobile: !!(navigator.userAgent.match(/Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone/i))
+      isMobile: !!(navigator.userAgent.match(/Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone/i)),
+      acceptTouch: !!(('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch)
     }
   })();
 
@@ -21,11 +22,20 @@
   var ROTATION_STEP = 0.004;
   var GLOBE_FACES = features.isMobile ? 16 : 32;
 
+  // Globe inertions
+  var GLOBE_MASS = 50;
+  var GLOBE_DAMPING_FACTOR = 0.95;
+  var GLOBE_FAST_DAMPING_FACTOR = 0.3;
+  var GLOBE_INERTION_START_THESHOLD = 0.07;
+  var GLOBE_INERTION_STOP_THESHOLD = 0.004;
+
+  var globeImpulse = {x: 0, y: 0};
+  var globeDampingFactor = GLOBE_DAMPING_FACTOR;
+
   var windowHalfX = window.innerWidth / 2;
   var windowHalfY = window.innerHeight / 2;
 
-  var texture_src = 'img/textures/dashboard_device_map.png';
-  //var texture_src = 'img/textures/earthmap1k.jpg';
+  var texture_src = 'img/textures/dashboard_device_map_' + (features.isMobile ? 1024 : 2048) + '.png';
 
   function init() {
     container = document.getElementById('container');
@@ -44,21 +54,23 @@
       renderer = new THREE.WebGLRenderer({
         antialias: !features.isMobile
       });
-      angle_info.textContent = 'Using WegGL. ' + (features.isMobile ? 'On mobile' : 'On desktop');
+      angle_info.textContent = 'Using WegGL.';
     } else if (features.canvas) {
       renderer = new THREE.CanvasRenderer();
-      angle_info.textContent = 'Using Canvas.' + (features.isMobile ? 'On mobile' : 'On desktop');
+      angle_info.textContent = 'Using Canvas.'
     } else {
       angle_info.textContent = 'No supported render found';
       return false;
     }
+    angle_info.textContent += (features.isMobile ? ' On mobile' : ' On desktop');
+
     renderer.setClearColor(0xFFFCFB, 1);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
 
     // Camera
     camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000 );
-    camera.position.z = 500;
+    camera.position.z = (camera.aspect < 1) ? 600 : 500;
     camera.lookAt(scene.position);
 
     // Earth
@@ -86,6 +98,14 @@
     renderer.domElement.addEventListener('mouseup', onDocumentMouseUp, false);
     renderer.domElement.addEventListener('click', onDocumentClick, false);
 
+    if (features.acceptTouch) {
+      //document.addEventListener('touchstart', onDocumentMouseDown, false);
+      //document.addEventListener('touchmove', onDocumentMouseMove, false);
+      //document.addEventListener('touchend', onDocumentMouseUp, false);
+
+      angle_info.textContent += ' Accept touches.';
+    }
+
     return true;
   }
 
@@ -94,6 +114,7 @@
     windowHalfY = window.innerHeight / 2;
 
     camera.aspect = window.innerWidth / window.innerHeight;
+    camera.position.z = (camera.aspect < 1) ? 600 : 500;
     camera.updateProjectionMatrix();
 
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -107,16 +128,19 @@
       dragOpts = {
         x: evt.clientX - windowHalfX,
         y: evt.clientY - windowHalfY,
-        rotation: {x: group.rotation.x, y: group.rotation.y}
+        rotation: {x: group.rotation.x, y: group.rotation.y},
+        time: (new Date()).getTime()
       }
     }
+    globeDampingFactor = GLOBE_FAST_DAMPING_FACTOR;
   }
 
   function onDocumentMouseMove(evt) {
     mouseX = (evt.clientX - windowHalfX);
     mouseY = (evt.clientY - windowHalfY);
 
-    checkIntersection(evt);
+    //checkIntersection(evt);
+    isDragPossible = true;
 
     if (dragOpts && ((Math.abs(mouseX - dragOpts.x) >= DRAG_THESHOLD) || (Math.abs(mouseY - dragOpts.y) >= DRAG_THESHOLD))) {
       isOnDragg = true;
@@ -125,10 +149,30 @@
   }
 
   function onDocumentMouseUp(evt) {
+    var dragTime = (new Date()).getTime() - dragOpts.time;
+    var dragAngleDiff = {
+      x: group.rotation.x - dragOpts.rotation.x,
+      y: group.rotation.y - dragOpts.rotation.y
+    };
+    var dragDiff = Math.sqrt((dragAngleDiff.x * dragAngleDiff.x) + (dragAngleDiff.y * dragAngleDiff.y));
+
+    globeImpulse = {
+      x: (dragAngleDiff.x / dragTime) * GLOBE_MASS,
+      y: (dragAngleDiff.y / dragTime) * GLOBE_MASS
+    }
+    globeImpulse.x_abs = Math.abs(globeImpulse.x);
+    globeImpulse.y_abs = Math.abs(globeImpulse.y);
+
+    globeImpulse.x = globeImpulse.x_abs >= GLOBE_INERTION_START_THESHOLD ? globeImpulse.x : 0;
+    globeImpulse.y = globeImpulse.y_abs >= GLOBE_INERTION_START_THESHOLD ? globeImpulse.y : 0;
+
     isOnDragg = false;
     dragOpts = false;
 
-    checkIntersection(evt);
+    //checkIntersection(evt);
+    isDragPossible = false;
+
+    globeDampingFactor = GLOBE_DAMPING_FACTOR;
   }
 
   function onDocumentClick(evt) {
@@ -242,6 +286,19 @@
     requestAnimationFrame(animate);
 
     if (!isOnDragg) {
+      if (globeImpulse.y_abs > GLOBE_INERTION_STOP_THESHOLD) {
+        group.rotation.y += globeImpulse.y;
+        globeImpulse.y *= globeDampingFactor;
+      } else {
+        globeImpulse.y = 0;
+      }
+      if (globeImpulse.x_abs > GLOBE_INERTION_STOP_THESHOLD) {
+        group.rotation.x += globeImpulse.x;
+        globeImpulse.x *= globeDampingFactor;
+      } else {
+        globeImpulse.x = 0;
+      }
+
       /*
       group.rotation.y += ROTATION_STEP;
       camera.position.x += (mouseX - camera.position.x) * 0.05;
