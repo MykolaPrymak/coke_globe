@@ -6,6 +6,7 @@ html, body {
     overflow: hidden;
 }
 body {
+  position:fixed;
   background-color: #eee;
   color: #808080;
   font-family:Monospace;

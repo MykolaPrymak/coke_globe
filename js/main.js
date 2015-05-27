@@ -123,7 +123,7 @@
   }
 
   function onDocumentMouseDown(evt) {
-    evt.preventDefault();
+    //evt.preventDefault();
     if (isDragPossible) {
       isGlobeDragged = false;
 
