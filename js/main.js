@@ -86,10 +86,12 @@
     container.appendChild(renderer.domElement);
 
     // Stats
+    /*
     stats = new Stats();
     stats.domElement.style.position = 'absolute';
     stats.domElement.style.top = '0';
     container.appendChild( stats.domElement );
+    */
 
     window.addEventListener('resize', onWindowResize, false);
 
@@ -333,7 +335,7 @@
     }
 
     render();
-    stats.update();
+    //stats.update();
   }
 
   function render() {
