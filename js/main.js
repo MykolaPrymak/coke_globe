@@ -7,7 +7,8 @@
     return {
       canvas: canvas_support,
       canvastext: canvas_support && (canvas_elem.getContext('2d').fillText instanceof Function),
-      webgl: !!window.WebGLRenderingContext
+      webgl: !!window.WebGLRenderingContext,
+      isMobile: !!(navigator.userAgent.match(/Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone/i))
     }
   })();
 
@@ -18,11 +19,13 @@
   var isDragPossible = false, isOnDragg = false, dragOpts, isGlobeDragged = false;
   var DRAG_THESHOLD = 5;
   var ROTATION_STEP = 0.004;
+  var GLOBE_FACES = features.isMobile ? 16 : 32;
 
   var windowHalfX = window.innerWidth / 2;
   var windowHalfY = window.innerHeight / 2;
 
   var texture_src = 'img/textures/dashboard_device_map.png';
+  //var texture_src = 'img/textures/earthmap1k.jpg';
 
   function init() {
     container = document.getElementById('container');
@@ -31,14 +34,22 @@
 
     scene.add(group);
 
+    angle_info = document.createElement('div');
+    angle_info.style.position = 'absolute';
+    angle_info.style.left = '100px';
+    angle_info.style.top = '0';
+    container.appendChild(angle_info);
+
     if (features.webgl) {
       renderer = new THREE.WebGLRenderer({
-        antialias: true, // to get smoother output
-        preserveDrawingBuffer: true // to allow screenshot
+        antialias: !features.isMobile
       });
+      angle_info.textContent = 'Using WegGL. ' + (features.isMobile ? 'On mobile' : 'On desktop');
     } else if (features.canvas) {
       renderer = new THREE.CanvasRenderer();
+      angle_info.textContent = 'Using Canvas.' + (features.isMobile ? 'On mobile' : 'On desktop');
     } else {
+      angle_info.textContent = 'No supported render found';
       return false;
     }
     renderer.setClearColor(0xFFFCFB, 1);
@@ -51,7 +62,7 @@
     camera.lookAt(scene.position);
 
     // Earth
-    var geometry = new THREE.SphereGeometry(200, 32, 32);
+    var geometry = new THREE.SphereGeometry(200, GLOBE_FACES, GLOBE_FACES);
     var material = new THREE.MeshBasicMaterial({
       map: THREE.ImageUtils.loadTexture(texture_src),
       overdraw: 0.5
@@ -68,25 +79,12 @@
     stats.domElement.style.top = '0';
     container.appendChild( stats.domElement );
 
-    angle_info = document.createElement('div');
-    angle_info.style.position = 'absolute';
-    angle_info.style.left = '100px';
-    angle_info.style.top = '0';
-    container.appendChild(angle_info);
+    window.addEventListener('resize', onWindowResize, false);
 
-
-
-    document.addEventListener('mousedown', onDocumentMouseDown, false);
-    document.addEventListener('mousemove', onDocumentMouseMove, false);
-    document.addEventListener('mouseup', onDocumentMouseUp, false);
-    //renderer.domElement.addEventListener( 'mousemove', onDocumentMouseMove, false );
-
-    //window.addEventListener('resize', onWindowResize, false);
-
+    renderer.domElement.addEventListener('mousedown', onDocumentMouseDown, false);
+    renderer.domElement.addEventListener('mousemove', onDocumentMouseMove, false);
+    renderer.domElement.addEventListener('mouseup', onDocumentMouseUp, false);
     renderer.domElement.addEventListener('click', onDocumentClick, false);
-
-
-
 
     return true;
   }
