@@ -125,8 +125,8 @@
   }
 
   function onDocumentMouseDown(evt) {
+    //evt.preventDefault();
     if (isDragPossible) {
-      //evt.preventDefault();
       isGlobeDragged = false;
 
       mixTouchToEvent(evt);
@@ -142,6 +142,7 @@
   }
 
   function onDocumentMouseMove(evt) {
+    evt.preventDefault();
     mixTouchToEvent(evt);
     mouseX = (evt.clientX - windowHalfX);
     mouseY = (evt.clientY - windowHalfY);
@@ -256,7 +257,7 @@
     ctx.drawImage(img, 0, 0, size.w, size.h);
 
     var pixel = ctx.getImageData(size.w * pos.x, size.h * pos.y, 1, 1);
-    console.info(size.w * pos.x, size.h * pos.y)
+    //console.info(size.w * pos.x, size.h * pos.y)
     var data = pixel.data;
     var rgba = 'rgba(' + data[0] + ',' + data[1] + ',' + data[2] + ',' + data[3] + ')';
     return rgba;
