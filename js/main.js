@@ -93,15 +93,17 @@
 
     window.addEventListener('resize', onWindowResize, false);
 
-    renderer.domElement.addEventListener('mousedown', onDocumentMouseDown, false);
-    renderer.domElement.addEventListener('mousemove', onDocumentMouseMove, false);
-    renderer.domElement.addEventListener('mouseup', onDocumentMouseUp, false);
+    if (!features.acceptTouch) {
+      renderer.domElement.addEventListener('mousedown', onDocumentMouseDown, false);
+      renderer.domElement.addEventListener('mousemove', onDocumentMouseMove, false);
+      renderer.domElement.addEventListener('mouseup', onDocumentMouseUp, false);
+    }
     renderer.domElement.addEventListener('click', onDocumentClick, false);
 
     if (features.acceptTouch) {
-      //document.addEventListener('touchstart', onDocumentMouseDown, false);
-      //document.addEventListener('touchmove', onDocumentMouseMove, false);
-      //document.addEventListener('touchend', onDocumentMouseUp, false);
+      window.addEventListener('touchstart', onDocumentMouseDown, false);
+      window.addEventListener('touchmove', onDocumentMouseMove, false);
+      window.addEventListener('touchend', onDocumentMouseUp, false);
 
       angle_info.textContent += ' Accept touches.';
     }
@@ -122,9 +124,11 @@
 
   function onDocumentMouseDown(evt) {
     if (isDragPossible) {
-      evt.preventDefault();
+      //evt.preventDefault();
       isGlobeDragged = false;
 
+      mixTouchToEvent(evt);
+      angle_info.textContent = 'Touch start';
       dragOpts = {
         x: evt.clientX - windowHalfX,
         y: evt.clientY - windowHalfY,
@@ -136,6 +140,7 @@
   }
 
   function onDocumentMouseMove(evt) {
+    mixTouchToEvent(evt);
     mouseX = (evt.clientX - windowHalfX);
     mouseY = (evt.clientY - windowHalfY);
 
@@ -149,28 +154,22 @@
   }
 
   function onDocumentMouseUp(evt) {
+    angle_info.textContent += ' -> Touch end';
     var dragTime = (new Date()).getTime() - dragOpts.time;
-    var dragAngleDiff = {
-      x: group.rotation.x - dragOpts.rotation.x,
-      y: group.rotation.y - dragOpts.rotation.y
-    };
-    var dragDiff = Math.sqrt((dragAngleDiff.x * dragAngleDiff.x) + (dragAngleDiff.y * dragAngleDiff.y));
 
     globeImpulse = {
-      x: (dragAngleDiff.x / dragTime) * GLOBE_MASS,
-      y: (dragAngleDiff.y / dragTime) * GLOBE_MASS
+      x: ((group.rotation.x - dragOpts.rotation.x) / dragTime) * GLOBE_MASS,
+      y: ((group.rotation.y - dragOpts.rotation.y) / dragTime) * GLOBE_MASS
     }
-    globeImpulse.x_abs = Math.abs(globeImpulse.x);
-    globeImpulse.y_abs = Math.abs(globeImpulse.y);
 
-    globeImpulse.x = globeImpulse.x_abs >= GLOBE_INERTION_START_THESHOLD ? globeImpulse.x : 0;
-    globeImpulse.y = globeImpulse.y_abs >= GLOBE_INERTION_START_THESHOLD ? globeImpulse.y : 0;
+    globeImpulse.x += Math.abs(globeImpulse.x) >= GLOBE_INERTION_START_THESHOLD ? globeImpulse.x : 0;
+    globeImpulse.y += Math.abs(globeImpulse.y) >= GLOBE_INERTION_START_THESHOLD ? globeImpulse.y : 0;
 
     isOnDragg = false;
     dragOpts = false;
 
     //checkIntersection(evt);
-    isDragPossible = false;
+    //isDragPossible = false;
 
     globeDampingFactor = GLOBE_DAMPING_FACTOR;
   }
@@ -235,6 +234,14 @@
     }
   }
 
+  function mixTouchToEvent(evt) {
+    if (features.acceptTouch &&  evt.touches && (evt.touches.length > 0)) {
+      var touch = evt.touches[0];
+      evt.clientX = touch.clientX;
+      evt.clientY = touch.clientY;
+    }
+  }
+
   function getColorAt(pos) {
     var img = new Image();
     img.src = texture_src;
@@ -286,13 +293,13 @@
     requestAnimationFrame(animate);
 
     if (!isOnDragg) {
-      if (globeImpulse.y_abs > GLOBE_INERTION_STOP_THESHOLD) {
+      if (Math.abs(globeImpulse.y) > GLOBE_INERTION_STOP_THESHOLD) {
         group.rotation.y += globeImpulse.y;
         globeImpulse.y *= globeDampingFactor;
       } else {
         globeImpulse.y = 0;
       }
-      if (globeImpulse.x_abs > GLOBE_INERTION_STOP_THESHOLD) {
+      if (Math.abs(globeImpulse.x) > GLOBE_INERTION_STOP_THESHOLD) {
         group.rotation.x += globeImpulse.x;
         globeImpulse.x *= globeDampingFactor;
       } else {
