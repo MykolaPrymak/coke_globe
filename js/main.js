@@ -41,6 +41,7 @@
   var windowHalfY = window.innerHeight / 2;
 
   var texture_src = 'img/textures/dashboard_device_map_' + (features.isMobile ? 1024 : 2048) + '.png';
+  var map_texture_src = 'img/textures/dashboard_country_map.png';
 
   function init() {
     container = document.getElementById('container');
@@ -69,6 +70,7 @@
     }
     angle_info.textContent += (features.isMobile ? ' On mobile' : ' On desktop');
 
+    THREE.ImageUtils.crossOrigin = "";
     renderer.setClearColor(0xFFFCFB, 1);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -155,6 +157,8 @@
     //checkIntersection(evt);
     isDragPossible = true;
 
+    getCountryCode(evt.clientX, evt.clientY);
+
     if (dragOpts && ((abs(mouseX - dragOpts.x) >= DRAG_THESHOLD) || (abs(mouseY - dragOpts.y) >= DRAG_THESHOLD))) {
       isOnDragg = true;
       isGlobeDragged = true;
@@ -192,6 +196,21 @@
       return;
     }
 
+    var country_code = getCountryCode(evt.clientX, evt.clientY);
+    if (country_code !== null) {
+      angle_info.textContent = 'Click on ' + angle_info.textContent.toLowerCase();
+    }
+  }
+
+  function mixTouchToEvent(evt) {
+    if (features.acceptTouch &&  evt.touches && (evt.touches.length > 0)) {
+      var touch = evt.touches[0];
+      evt.clientX = touch.clientX;
+      evt.clientY = touch.clientY;
+    }
+  }
+
+  function getCountryCode(mouseX, mouseY) {
     // Not supported by all~!!!!!!!!!!!!!
     var canvasRect = renderer.domElement.getBoundingClientRect();
     var raycaster = new THREE.Raycaster();
@@ -200,8 +219,8 @@
     camera.localToWorld(raycaster.ray.origin);
 
     raycaster.ray.direction.set(
-        ((evt.clientX - canvasRect.left) / canvasRect.width) * 2 - 1,
-        ((canvasRect.top - evt.clientY) / canvasRect.height) * 2 + 1,
+        ((mouseX - canvasRect.left) / canvasRect.width) * 2 - 1,
+        ((canvasRect.top - mouseY) / canvasRect.height) * 2 + 1,
     0.5).unproject(camera).sub(raycaster.ray.origin).normalize();
 
     var intersects = raycaster.intersectObject(scene, true);
@@ -232,45 +251,56 @@
         uv.y += barry.z * geometry.faceVertexUvs[0][faceIndex][2].y;
 
         // uv coordinates are straightforward to convert into lat/lon
-
         //var lat = 180 * (uv.y - 0.5);
         //var lon = 360 * (uv.x - 0.5);
 
-
+        // Normalize
         uv.y = 1 - uv.y;
-        var color = getColorAt(uv);
-        angle_info.textContent = 'Clicked on: ' + uv.x.toPrecision(3) + 'x' +  uv.y.toPrecision(3) + '; color is:' + color;
-        angle_info.style.background = color;
 
-        //console.info(uv);
-        return;
+        var color = getColorAt(uv);
+        if (color !== null) {
+          if (color[0] !== 0) {
+            angle_info.textContent = 'Country code: ' + color[0];
+            container.style.cursor = 'pointer';
+            return color[0];
+          } else {
+            angle_info.textContent = 'Empty space';
+            container.style.cursor = 'auto';
+          }
+        } else {
+          angle_info.textContent = 'Can\'t get color';
+        }
+    } else {
+      container.style.cursor = 'auto';
     }
+    return null
   }
 
-  function mixTouchToEvent(evt) {
-    if (features.acceptTouch &&  evt.touches && (evt.touches.length > 0)) {
-      var touch = evt.touches[0];
-      evt.clientX = touch.clientX;
-      evt.clientY = touch.clientY;
-    }
+  var color_picker_canvas;
+  var color_picker_canvas_ctx;
+  var color_picker_canvas_size = {w: 500, h: 500};
+
+  function init_color_picker() {
+    var img = new Image();
+    img.onload = function() {
+      color_picker_canvas = document.createElement('canvas');
+      color_picker_canvas.width = color_picker_canvas_size.w;
+      color_picker_canvas.height = color_picker_canvas_size.h;
+
+      color_picker_canvas_ctx = color_picker_canvas.getContext('2d');
+      color_picker_canvas_ctx.drawImage(img, 0, 0, color_picker_canvas_size.w, color_picker_canvas_size.h);
+    };
+    img.src = map_texture_src;
   }
 
   function getColorAt(pos) {
-    var img = new Image();
-    img.src = texture_src;
-    var size = {w: 500, h: 500};
-
-    var canvas = document.createElement('canvas');
-    canvas.width = size.w;
-    canvas.height = size.h;
-    var ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, size.w, size.h);
-
-    var pixel = ctx.getImageData(size.w * pos.x, size.h * pos.y, 1, 1);
-    //console.info(size.w * pos.x, size.h * pos.y)
-    var data = pixel.data;
-    var rgba = 'rgba(' + data[0] + ',' + data[1] + ',' + data[2] + ',' + data[3] + ')';
-    return rgba;
+    if (color_picker_canvas_ctx) {
+      var pixel = color_picker_canvas_ctx.getImageData(color_picker_canvas_size.w * pos.x, color_picker_canvas_size.h * pos.y, 1, 1);
+      //console.info(color_picker_canvas_size.w * pos.x, color_picker_canvas_size.h * pos.y)
+      // return rgba data as array
+      return pixel.data;
+    }
+    return null;
   }
 
   function checkIntersection(evt) {
@@ -305,16 +335,16 @@
   function rad2deg(rad) {
     return rad * 180 / PI;
   }
+
   function rad2deg(rad) {
     return rad * 180 / PI;
   }
-
 
   function animate() {
     requestAnimationFrame(animate);
 
     if (!isOnDragg) {
-/*
+      /*
       if (globeImpulse.x !== 0) {
         if (abs(globeImpulse.x) > GLOBE_INERTION_STOP_THESHOLD) {
           group.rotation.x += globeImpulse.x;
@@ -323,7 +353,7 @@
           globeImpulse.x = 0;
         }
       }
-*/
+      */
       if (globeImpulse.y !== 0) {
         if (abs(globeImpulse.y) > GLOBE_INERTION_STOP_THESHOLD) {
           group.rotation.y += globeImpulse.y;
@@ -332,7 +362,7 @@
           globeImpulse.y = 0;
         }
       }
-/*
+      /*
       if (globeImpulse.z !== 0) {
         if (abs(globeImpulse.z) > GLOBE_INERTION_STOP_THESHOLD) {
           group.rotation.z += globeImpulse.z;
@@ -341,7 +371,7 @@
           globeImpulse.z = 0;
         }
       }
-*/
+      */
       /*
       group.rotation.y += ROTATION_STEP;
       camera.position.x += (mouseX - camera.position.x) * 0.05;
@@ -385,6 +415,7 @@
       }
     }
 
+    getCountryCode(mouseX + windowHalfX, mouseY + windowHalfY);
     render();
     stats.update();
   }
@@ -394,4 +425,8 @@
   }
 
   init() && animate();
+
+  // Initialize the color picker
+  init_color_picker();
+
 })();
