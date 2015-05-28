@@ -24,6 +24,7 @@
   var ROTATION_STEP = features.isMobile ? 0.006 : 0.0045;
   var GLOBE_DETAILS = features.isMobile ? 16 : 32;
   var GLOBE_MAX_POLAR_ANGLE = PI / 6;
+  var isGlobeAutorotate = true;
 
 
   // Globe inertions
@@ -141,6 +142,7 @@
       }
     }
     globeDampingFactor = GLOBE_FAST_DAMPING_FACTOR;
+    isGlobeAutorotate = false;
   }
 
   function onDocumentMouseMove(evt) {
@@ -163,18 +165,21 @@
     angle_info.textContent += ' -> Touch end';
     var dragTime = (new Date()).getTime() - dragOpts.time;
 
-    globeImpulse = {
+    var impulse = {
       x: ((group.rotation.x - dragOpts.rotation.x) / dragTime) * GLOBE_MASS,
       y: ((group.rotation.y - dragOpts.rotation.y) / dragTime) * GLOBE_MASS,
       z: ((group.rotation.z - dragOpts.rotation.z) / dragTime) * GLOBE_MASS
     }
 
-    globeImpulse.x += abs(globeImpulse.x) >= GLOBE_INERTION_START_THESHOLD ? globeImpulse.x : 0;
-    globeImpulse.y += abs(globeImpulse.y) >= GLOBE_INERTION_START_THESHOLD ? globeImpulse.y : 0;
-    globeImpulse.z += abs(globeImpulse.z) >= GLOBE_INERTION_START_THESHOLD ? globeImpulse.z : 0;
+    globeImpulse.x += abs(impulse.x) >= GLOBE_INERTION_START_THESHOLD ? impulse.x : 0;
+    globeImpulse.y += abs(impulse.y) >= GLOBE_INERTION_START_THESHOLD ? impulse.y : 0;
+    globeImpulse.z += abs(impulse.z) >= GLOBE_INERTION_START_THESHOLD ? impulse.z : 0;
 
     isOnDragg = false;
     dragOpts = false;
+
+    // Enable auto-rotation only if we have spinning globe
+    isGlobeAutorotate = (abs(globeImpulse.y) >= GLOBE_INERTION_START_THESHOLD);
 
     //checkIntersection(evt);
     //isDragPossible = false;
@@ -358,6 +363,9 @@
         group.rotation.x += ROTATION_STEP * (group.rotation.x > 0 ? -1 : 1);
       }
       */
+      if (isGlobeAutorotate) {
+        group.rotation.y += ROTATION_STEP / 2;
+      }
     } else {
       var xShift = ((mouseY - dragOpts.y) * (ROTATION_STEP / 2));
       var yShift = ((mouseX - dragOpts.x) * (ROTATION_STEP / 2));
