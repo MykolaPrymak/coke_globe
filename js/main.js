@@ -41,7 +41,11 @@
   var windowHalfY = window.innerHeight / 2;
 
   var texture_src = 'img/textures/dashboard_device_map_' + (features.isMobile ? 1024 : 2048) + '.png';
+
+  // Country selection
   var map_texture_src = 'img/textures/dashboard_country_map.png';
+  var canvasRect;
+  var selected_country = null;
 
   function init() {
     container = document.getElementById('container');
@@ -85,7 +89,7 @@
     var material = new THREE.MeshBasicMaterial({
       map: THREE.ImageUtils.loadTexture(texture_src),
       overdraw: 0.5
-    })
+    });
     var earthMesh  = new THREE.Mesh(geometry, material);
 
     group.add(earthMesh);
@@ -100,23 +104,25 @@
     container.appendChild( stats.domElement );
     */
 
+
+    // Add event listeners
     window.addEventListener('resize', onWindowResize, false);
 
     if (!features.acceptTouch) {
       renderer.domElement.addEventListener('mousedown', onDocumentMouseDown, false);
       renderer.domElement.addEventListener('mousemove', onDocumentMouseMove, false);
       renderer.domElement.addEventListener('mouseup', onDocumentMouseUp, false);
-    }
-    renderer.domElement.addEventListener('click', onDocumentClick, false);
-
-    if (features.acceptTouch) {
+    } else {
       window.addEventListener('touchstart', onDocumentMouseDown, false);
       window.addEventListener('touchmove', onDocumentMouseMove, false);
       window.addEventListener('touchend', onDocumentMouseUp, false);
 
       angle_info.textContent += ' Accept touches.';
     }
+    renderer.domElement.addEventListener('click', onDocumentClick, false);
 
+    // Get canvas position/size for use in detection func. Not supported by all~!!!!!!!!!!!!!
+    canvasRect = renderer.domElement.getBoundingClientRect();
     return true;
   }
 
@@ -129,6 +135,8 @@
     camera.updateProjectionMatrix();
 
     renderer.setSize(window.innerWidth, window.innerHeight);
+
+    canvasRect = renderer.domElement.getBoundingClientRect();
   }
 
   function onDocumentMouseDown(evt) {
@@ -158,8 +166,6 @@
 
     //checkIntersection(evt);
     isDragPossible = true;
-
-    getCountryCode(evt.clientX, evt.clientY);
 
     if (dragOpts && ((abs(mouseX - dragOpts.x) >= DRAG_THESHOLD) || (abs(mouseY - dragOpts.y) >= DRAG_THESHOLD))) {
       isOnDragg = true;
@@ -199,7 +205,8 @@
     }
 
     var country_code = getCountryCode(evt.clientX, evt.clientY);
-    if (country_code !== null) {
+    if (country_code !== selected_country) {
+      selected_country = country_code;
       angle_info.textContent = 'Click on ' + angle_info.textContent.toLowerCase();
     }
   }
@@ -213,8 +220,6 @@
   }
 
   function getCountryCode(mouseX, mouseY) {
-    // Not supported by all~!!!!!!!!!!!!!
-    var canvasRect = renderer.domElement.getBoundingClientRect();
     var raycaster = new THREE.Raycaster();
 
     raycaster.ray.origin.set(0, 0, 0);
@@ -342,6 +347,7 @@
     return rad * 180 / PI;
   }
 
+var original_image;
   function animate() {
     requestAnimationFrame(animate);
 
@@ -417,7 +423,37 @@
       }
     }
 
-    getCountryCode(mouseX + windowHalfX, mouseY + windowHalfY);
+    var country_code = getCountryCode(mouseX + windowHalfX, mouseY + windowHalfY);
+    if (country_code !== selected_country) {
+      selected_country = country_code;
+
+      var globe = group.children[0];
+      if (selected_country !== null) {
+       // Draw random circle
+        if (!original_image) {
+          original_image = globe.material.map.image;
+        }
+        var cnv = document.createElement('canvas');
+        cnv.width = original_image.width;
+        cnv.height = original_image.height;
+
+        ctx = cnv.getContext('2d');
+
+        ctx.drawImage(original_image, 0, 0, original_image.width, original_image.height);
+        ctx.globalAlpha = .5;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.drawImage(color_picker_canvas, 0, 0, color_picker_canvas.width, color_picker_canvas.height, 0, 0, original_image.width, original_image.height);
+
+        // Put it back and request update
+        globe.material.map = new THREE.Texture(cnv);
+
+        globe.material.map.needsUpdate = true;
+      } else if (original_image) {
+        globe.material.map = new THREE.Texture(original_image);
+        globe.material.map.needsUpdate = true;
+      }
+    }
+
     render();
     //stats.update();
   }
