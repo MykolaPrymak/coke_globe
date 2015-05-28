@@ -143,7 +143,7 @@
       //evt.preventDefault();
 
       mixTouchToEvent(evt);
-      angle_info.textContent = 'Touch start';
+      //angle_info.textContent = 'Touch start';
       dragOpts = {
         x: evt.clientX - windowHalfX,
         y: evt.clientY - windowHalfY,
@@ -172,7 +172,7 @@
   }
 
   function onDocumentMouseUp(evt) {
-    angle_info.textContent += ' -> Touch end';
+    //angle_info.textContent += ' -> Touch end';
     var dragTime = (new Date()).getTime() - dragOpts.time;
 
     var impulse = {
@@ -205,8 +205,8 @@
     var country_code = getCountryCode(evt.clientX, evt.clientY);
     if (country_code !== selected_country) {
       selected_country = country_code;
-      angle_info.textContent = 'Click on ' + angle_info.textContent.toLowerCase();
     }
+    angle_info.textContent = 'Click on country ' + country_code;
   }
 
   function mixTouchToEvent(evt) {
@@ -265,11 +265,11 @@
         var color = getColorAt(uv);
         if (color !== null) {
           if (color[0] !== 0) {
-            angle_info.textContent = 'Country code: ' + color[0];
+            //angle_info.textContent = 'Country code: ' + color[0];
             container.style.cursor = 'pointer';
             return color[0];
           } else {
-            angle_info.textContent = 'Empty space';
+            //angle_info.textContent = 'Empty space';
             container.style.cursor = 'auto';
           }
         } else {
@@ -345,7 +345,7 @@
     return rad * 180 / PI;
   }
 
-var original_image;
+  var original_image;
   function animate() {
     requestAnimationFrame(animate);
 
@@ -438,8 +438,8 @@ var original_image;
         ctx = cnv.getContext('2d');
 
         ctx.drawImage(original_image, 0, 0, original_image.width, original_image.height);
-        ctx.globalAlpha = .5;
-        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = .3;
+        //ctx.globalCompositeOperation = 'lighter';
         ctx.drawImage(color_picker_canvas, 0, 0, color_picker_canvas.width, color_picker_canvas.height, 0, 0, original_image.width, original_image.height);
 
         // Put it back and request update
