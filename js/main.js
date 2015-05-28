@@ -1,4 +1,6 @@
 ;(function(){
+  // Shorthand for Math
+  var abs = Math.abs, sin = Math.sin, cos=Math.cos, PI = Math.PI;
 
   var features = (function(){
     var canvas_elem = document.createElement('canvas');
@@ -17,17 +19,17 @@
   var camera, scene, renderer;
   var group;
   var mouseX = 0, mouseY = 0;
-  var isDragPossible = false, isOnDragg = false, dragOpts, isGlobeDragged = false;
+  var isDragPossible = !false, isOnDragg = false, dragOpts, isGlobeDragged = false;
   var DRAG_THESHOLD = 5;
-  var ROTATION_STEP = 0.004;
-  var GLOBE_FACES = features.isMobile ? 16 : 32;
+  var ROTATION_STEP = features.isMobile ? 0.006 : 0.0045;
+  var GLOBE_DETAILS = features.isMobile ? 16 : 32;
+  var GLOBE_MAX_POLAR_ANGLE = PI / 6;
+  var isGlobeAutorotate = true;
 
-  // Shorthand for Math
-  var abs = Math.abs, sin = Math.sin, cos=Math.cos, PI = Math.Pi;
 
   // Globe inertions
-  var GLOBE_MASS = 30;
-  var GLOBE_DAMPING_FACTOR = 0.95;
+  var GLOBE_MASS = (features.isMobile ? 50 : 15);
+  var GLOBE_DAMPING_FACTOR = (features.isMobile ? 0.9 : 0.95);
   var GLOBE_FAST_DAMPING_FACTOR = 0.3;
   var GLOBE_INERTION_START_THESHOLD = 0.07;
   var GLOBE_INERTION_STOP_THESHOLD = 0.004;
@@ -77,7 +79,7 @@
     camera.lookAt(scene.position);
 
     // Earth
-    var geometry = new THREE.SphereGeometry(200, GLOBE_FACES, GLOBE_FACES);
+    var geometry = new THREE.SphereGeometry(200, GLOBE_DETAILS, GLOBE_DETAILS);
     var material = new THREE.MeshBasicMaterial({
       map: THREE.ImageUtils.loadTexture(texture_src),
       overdraw: 0.5
@@ -128,9 +130,9 @@
   }
 
   function onDocumentMouseDown(evt) {
-    //evt.preventDefault();
     if (isDragPossible) {
       isGlobeDragged = false;
+      //evt.preventDefault();
 
       mixTouchToEvent(evt);
       angle_info.textContent = 'Touch start';
@@ -142,10 +144,12 @@
       }
     }
     globeDampingFactor = GLOBE_FAST_DAMPING_FACTOR;
+    isGlobeAutorotate = false;
   }
 
   function onDocumentMouseMove(evt) {
     evt.preventDefault();
+
     mixTouchToEvent(evt);
     mouseX = (evt.clientX - windowHalfX);
     mouseY = (evt.clientY - windowHalfY);
@@ -163,18 +167,21 @@
     angle_info.textContent += ' -> Touch end';
     var dragTime = (new Date()).getTime() - dragOpts.time;
 
-    globeImpulse = {
+    var impulse = {
       x: ((group.rotation.x - dragOpts.rotation.x) / dragTime) * GLOBE_MASS,
       y: ((group.rotation.y - dragOpts.rotation.y) / dragTime) * GLOBE_MASS,
       z: ((group.rotation.z - dragOpts.rotation.z) / dragTime) * GLOBE_MASS
     }
 
-    globeImpulse.x += abs(globeImpulse.x) >= GLOBE_INERTION_START_THESHOLD ? globeImpulse.x : 0;
-    globeImpulse.y += abs(globeImpulse.y) >= GLOBE_INERTION_START_THESHOLD ? globeImpulse.y : 0;
-    globeImpulse.z += abs(globeImpulse.z) >= GLOBE_INERTION_START_THESHOLD ? globeImpulse.z : 0;
+    globeImpulse.x += abs(impulse.x) >= GLOBE_INERTION_START_THESHOLD ? impulse.x : 0;
+    globeImpulse.y += abs(impulse.y) >= GLOBE_INERTION_START_THESHOLD ? impulse.y : 0;
+    globeImpulse.z += abs(impulse.z) >= GLOBE_INERTION_START_THESHOLD ? impulse.z : 0;
 
     isOnDragg = false;
     dragOpts = false;
+
+    // Enable auto-rotation only if we have spinning globe
+    isGlobeAutorotate = (abs(globeImpulse.y) >= GLOBE_INERTION_START_THESHOLD);
 
     //checkIntersection(evt);
     //isDragPossible = false;
@@ -309,6 +316,7 @@
     requestAnimationFrame(animate);
 
     if (!isOnDragg) {
+/*
       if (globeImpulse.x !== 0) {
         if (abs(globeImpulse.x) > GLOBE_INERTION_STOP_THESHOLD) {
           group.rotation.x += globeImpulse.x;
@@ -317,7 +325,7 @@
           globeImpulse.x = 0;
         }
       }
-
+*/
       if (globeImpulse.y !== 0) {
         if (abs(globeImpulse.y) > GLOBE_INERTION_STOP_THESHOLD) {
           group.rotation.y += globeImpulse.y;
@@ -326,7 +334,7 @@
           globeImpulse.y = 0;
         }
       }
-
+/*
       if (globeImpulse.z !== 0) {
         if (abs(globeImpulse.z) > GLOBE_INERTION_STOP_THESHOLD) {
           group.rotation.z += globeImpulse.z;
@@ -335,7 +343,7 @@
           globeImpulse.z = 0;
         }
       }
-
+*/
       /*
       group.rotation.y += ROTATION_STEP;
       camera.position.x += (mouseX - camera.position.x) * 0.05;
@@ -357,6 +365,9 @@
         group.rotation.x += ROTATION_STEP * (group.rotation.x > 0 ? -1 : 1);
       }
       */
+      if (isGlobeAutorotate) {
+        group.rotation.y += ROTATION_STEP / 2;
+      }
     } else {
       var xShift = ((mouseY - dragOpts.y) * (ROTATION_STEP / 2));
       var yShift = ((mouseX - dragOpts.x) * (ROTATION_STEP / 2));
@@ -366,7 +377,14 @@
 
       group.rotation.x = xAngle + xShift; // Polar
       group.rotation.y = yAngle + (cos(xAngle) * yShift); // Equatorial
-      group.rotation.z = zAngle - (sin(xAngle) * yShift); // Azimutal
+      //group.rotation.z = zAngle - (sin(xAngle) * yShift); // Azimutal
+
+      // Max polar rotation
+      if (group.rotation.x > GLOBE_MAX_POLAR_ANGLE) {
+        group.rotation.x = GLOBE_MAX_POLAR_ANGLE;
+      } else if (group.rotation.x < -GLOBE_MAX_POLAR_ANGLE) {
+        group.rotation.x = -GLOBE_MAX_POLAR_ANGLE;
+      }
     }
 
     render();
