@@ -22,14 +22,17 @@
   var ROTATION_STEP = 0.004;
   var GLOBE_FACES = features.isMobile ? 16 : 32;
 
+  // Shorthand for Math
+  var abs = Math.abs, sin = Math.sin, cos=Math.cos, PI = Math.Pi;
+
   // Globe inertions
-  var GLOBE_MASS = 50;
+  var GLOBE_MASS = 30;
   var GLOBE_DAMPING_FACTOR = 0.95;
   var GLOBE_FAST_DAMPING_FACTOR = 0.3;
   var GLOBE_INERTION_START_THESHOLD = 0.07;
   var GLOBE_INERTION_STOP_THESHOLD = 0.004;
 
-  var globeImpulse = {x: 0, y: 0};
+  var globeImpulse = {x: 0, y: 0, z: 0};
   var globeDampingFactor = GLOBE_DAMPING_FACTOR;
 
   var windowHalfX = window.innerWidth / 2;
@@ -132,7 +135,7 @@
       dragOpts = {
         x: evt.clientX - windowHalfX,
         y: evt.clientY - windowHalfY,
-        rotation: {x: group.rotation.x, y: group.rotation.y},
+        rotation: {x: group.rotation.x, y: group.rotation.y, z: group.rotation.z},
         time: (new Date()).getTime()
       }
     }
@@ -148,7 +151,7 @@
     //checkIntersection(evt);
     isDragPossible = true;
 
-    if (dragOpts && ((Math.abs(mouseX - dragOpts.x) >= DRAG_THESHOLD) || (Math.abs(mouseY - dragOpts.y) >= DRAG_THESHOLD))) {
+    if (dragOpts && ((abs(mouseX - dragOpts.x) >= DRAG_THESHOLD) || (abs(mouseY - dragOpts.y) >= DRAG_THESHOLD))) {
       isOnDragg = true;
       isGlobeDragged = true;
     }
@@ -160,11 +163,13 @@
 
     globeImpulse = {
       x: ((group.rotation.x - dragOpts.rotation.x) / dragTime) * GLOBE_MASS,
-      y: ((group.rotation.y - dragOpts.rotation.y) / dragTime) * GLOBE_MASS
+      y: ((group.rotation.y - dragOpts.rotation.y) / dragTime) * GLOBE_MASS,
+      z: ((group.rotation.z - dragOpts.rotation.z) / dragTime) * GLOBE_MASS
     }
 
-    globeImpulse.x += Math.abs(globeImpulse.x) >= GLOBE_INERTION_START_THESHOLD ? globeImpulse.x : 0;
-    globeImpulse.y += Math.abs(globeImpulse.y) >= GLOBE_INERTION_START_THESHOLD ? globeImpulse.y : 0;
+    globeImpulse.x += abs(globeImpulse.x) >= GLOBE_INERTION_START_THESHOLD ? globeImpulse.x : 0;
+    globeImpulse.y += abs(globeImpulse.y) >= GLOBE_INERTION_START_THESHOLD ? globeImpulse.y : 0;
+    globeImpulse.z += abs(globeImpulse.z) >= GLOBE_INERTION_START_THESHOLD ? globeImpulse.z : 0;
 
     isOnDragg = false;
     dragOpts = false;
@@ -290,21 +295,43 @@
     }
   }
 
+  function rad2deg(rad) {
+    return rad * 180 / PI;
+  }
+  function rad2deg(rad) {
+    return rad * 180 / PI;
+  }
+
+
   function animate() {
     requestAnimationFrame(animate);
 
     if (!isOnDragg) {
-      if (Math.abs(globeImpulse.y) > GLOBE_INERTION_STOP_THESHOLD) {
-        group.rotation.y += globeImpulse.y;
-        globeImpulse.y *= globeDampingFactor;
-      } else {
-        globeImpulse.y = 0;
+      if (globeImpulse.x !== 0) {
+        if (abs(globeImpulse.x) > GLOBE_INERTION_STOP_THESHOLD) {
+          group.rotation.x += globeImpulse.x;
+          globeImpulse.x *= globeDampingFactor;
+        } else {
+          globeImpulse.x = 0;
+        }
       }
-      if (Math.abs(globeImpulse.x) > GLOBE_INERTION_STOP_THESHOLD) {
-        group.rotation.x += globeImpulse.x;
-        globeImpulse.x *= globeDampingFactor;
-      } else {
-        globeImpulse.x = 0;
+
+      if (globeImpulse.y !== 0) {
+        if (abs(globeImpulse.y) > GLOBE_INERTION_STOP_THESHOLD) {
+          group.rotation.y += globeImpulse.y;
+          globeImpulse.y *= globeDampingFactor;
+        } else {
+          globeImpulse.y = 0;
+        }
+      }
+
+      if (globeImpulse.z !== 0) {
+        if (abs(globeImpulse.z) > GLOBE_INERTION_STOP_THESHOLD) {
+          group.rotation.z += globeImpulse.z;
+          globeImpulse.z *= globeDampingFactor;
+        } else {
+          globeImpulse.z = 0;
+        }
       }
 
       /*
@@ -315,22 +342,29 @@
 
       // Reset the x rotation if no free move
       if (group.rotation.x !== 0) {
-        var DOUBLE_PI = (Math.PI * 2);
+        var DOUBLE_PI = (PI * 2);
         // Normalize angle
-        if (Math.abs(group.rotation.x) > DOUBLE_PI) {
+        if (abs(group.rotation.x) > DOUBLE_PI) {
           group.rotation.x = group.rotation.x % DOUBLE_PI;
         }
 
         // Reset if angle is too small
-        if (Math.abs(group.rotation.x) < ROTATION_STEP) {
+        if (abs(group.rotation.x) < ROTATION_STEP) {
           group.rotation.x = 0;
         }
         group.rotation.x += ROTATION_STEP * (group.rotation.x > 0 ? -1 : 1);
       }
       */
     } else {
-      group.rotation.y = dragOpts.rotation.y + ((mouseX - dragOpts.x) * (ROTATION_STEP / 2));
-      group.rotation.x = dragOpts.rotation.x + ((mouseY - dragOpts.y) * (ROTATION_STEP / 2));
+      var xShift = ((mouseY - dragOpts.y) * (ROTATION_STEP / 2));
+      var yShift = ((mouseX - dragOpts.x) * (ROTATION_STEP / 2));
+      var xAngle = dragOpts.rotation.x;
+      var yAngle = dragOpts.rotation.y;
+      var zAngle = dragOpts.rotation.z;
+
+      group.rotation.x = xAngle + xShift; // Polar
+      group.rotation.y = yAngle + (cos(xAngle) * yShift); // Equatorial
+      group.rotation.z = zAngle - (sin(xAngle) * yShift); // Azimutal
     }
 
     render();
@@ -338,7 +372,7 @@
   }
 
   function render() {
-    renderer.render(scene, camera );
+    renderer.render(scene, camera);
   }
 
   init() && animate();
