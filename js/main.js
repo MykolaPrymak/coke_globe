@@ -39,31 +39,31 @@
         id: 1,
         name: 'North America',
         url: 'http://google.com/?q=north%20america',
-        overlay: 'img/textures/dashboard_country_map.png'
+        overlay: 'img/textures/dashboard_country_map.png' // Png image with trasparency. Size is not must be equal to texture image.
       },
       'sa': {
         id: 2,
         name: 'South America',
         url: null,
-        overlay: 'img/textures/dashboard_country_map.png'
+        overlay: 'img/textures/earthbump1k.jpg'
       },
       'af': {
         id: 3,
         name: 'Africa',
         url: null,
-        overlay: 'img/textures/dashboard_country_map.png'
+        overlay: 'img/textures/earthlights1k.jpg'
       },
       'eu': {
         id: 4,
         name: 'Europe',
         url: null,
-        overlay: 'img/textures/dashboard_country_map.png'
+        overlay: 'img/textures/earthmap1k.jpg'
       },
       'au': {
         id: 5,
         name: 'Australia and Oceania',
         url: null,
-        overlay: 'img/textures/dashboard_country_map.png'
+        overlay: 'img/textures/earthcloudmap.png'
       }
     },
     overlayOpacity: 0.3 // Opacity of the active region texture mixin
@@ -387,8 +387,8 @@
       status.selected_region = regionId;
 
       var globe = group.children[0];
-      if (status.selected_region !== null) {
-
+      var region = getRegionInfo(regionId);
+      if ((regionId !== null) && region && region.overlay) {
         if (!status.texture_original_img) {
           status.texture_original_img = globe.material.map.image;
         }
@@ -398,14 +398,21 @@
 
         ctx = cnv.getContext('2d');
 
-        ctx.drawImage(status.texture_original_img, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
-        ctx.globalAlpha = config.overlayOpacity;
-        ctx.drawImage(color_picker.cnv, 0, 0, color_picker.size.w, color_picker.size.h, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
+        var overlay = new Image();
+        overlay.onload = function() {
+          // Draw original image
+          ctx.drawImage(status.texture_original_img, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
 
-        // Put it back and request update
-        globe.material.map = new THREE.Texture(cnv);
+          // Mix with overlay
+          ctx.globalAlpha = config.overlayOpacity;
+          ctx.drawImage(overlay, 0, 0, overlay.width, overlay.height, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
 
-        globe.material.map.needsUpdate = true;
+          // Put it back and request update
+          globe.material.map = new THREE.Texture(cnv);
+
+          globe.material.map.needsUpdate = true;
+        }
+        overlay.src = region.overlay;
       } else if (status.texture_original_img) {
         globe.material.map = new THREE.Texture(status.texture_original_img);
         globe.material.map.needsUpdate = true;
