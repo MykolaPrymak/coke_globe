@@ -18,28 +18,43 @@
 
   // Configuration is here ;)
   var config = {
-    autorotate: true, // Enable globe autorotation,
-    max_polar_angle: PI / 6, // Max angle to polar rotation. PI = 180 deg, PI/2 = 90 deg, PI /6 = 30 deg,
-    details: 32, // Globe detail level
-    rotation_step: 0.0045, // Rotation speed on drag/spining. Lower value - slower rotation.
-    drag_theshold: 5, // Min drag distance in px to start drag and not perform click on globe,
-    inertia: { // Inertia configuration
-      mass: 15, // Lower value - more massive globe
-      dumping: { // 1-0 range. Lower value - fastest globe stop
-        normal: 0.95, //Normal dumping value
-        fast: 0.3, // Dumping value if user click on the globe
+    // Enable globe autorotation,
+    autorotate: true,
+    // Max angle to polar rotation. PI = 180 deg, PI/2 = 90 deg, PI /6 = 30 deg,
+    max_polar_angle: PI / 6,
+    // Globe detail level
+    details: 32,
+    // Rotation speed on drag/spining. Lower value - slower rotation.
+    rotation_step: 0.0045,
+    // Min drag distance in px to start drag and not perform click on globe,
+    drag_theshold: 5,
+    // Inertia configuration
+    inertia: {
+      // Lower value - more massive globe
+      mass: 15,
+      // 1-0 range. Lower value - fastest globe stop
+      dumping: {
+        // Normal dumping value
+        normal: 0.95,
+        // Dumping value if user click on the globe
+        fast: 0.3
       },
-      start_theshold: 0.07, // Start inertia threshold. Lower value - much less move to start spinning.
-      stop_theshold: 0.004 // On which inertia value the spinning is stopped. (And start auto rotation if enabled.)
+      // Start inertia threshold. Lower value - much less move to start spinning.
+      start_theshold: 0.07,
+      // On which inertia value the spinning is stopped. (And start auto rotation if enabled.)
+      stop_theshold: 0.004
     },
-    texture_src: 'img/textures/dashboard_device_map_2048.png', // Main globe texture
-    region_texture_src: 'img/textures/dashboard_country_map.png', // Texture with active regions. Using non-zero values from red channel.
+    // Main globe texture
+    texture_src: 'img/textures/dashboard_device_map_2048.png',
+    // Texture with active regions. Using non-zero values from red channel.
+    region_texture_src: 'img/textures/dashboard_country_map.png',
     regions: {
       'na': {
         id: 1,
         name: 'North America',
         url: 'http://google.com/?q=north%20america',
-        overlay: 'img/textures/dashboard_country_map.png' // Png image with trasparency. Size is not must be equal to texture image.
+        // Png image with trasparency. Size is not must be equal to texture image.
+        overlay: 'img/textures/dashboard_country_map.png'
       },
       'sa': {
         id: 2,
@@ -66,7 +81,8 @@
         overlay: 'img/textures/earthcloudmap.png'
       }
     },
-    overlayOpacity: 0.3 // Opacity of the active region texture mixin
+    // Opacity of the active region texture mixin
+    overlayOpacity: 0.3
   };
 
   // Tune values for mobile
@@ -85,16 +101,23 @@
 
   // Global variable to store the current status
   var status = {
-    mouseX: 0, // Mouse movement x.y position related to container center
+    // Mouse movement x.y position related to container center
+    mouseX: 0,
     mouseY: 0,
-    drag: { // Globe drag status
-      possible: true, // is possible?
-      started: false, // is started?
-      active: false, // is active?
+    // Globe drag status
+    drag: {
+      // is possible?
+      possible: true,
+      // is started?
+      started: false,
+      // is active?
+      active: false,
+      // Drag start options
       opts: {
         rotation: {x: 0, y: 0, z: 0}
-      }, // Drag start options
-      successfully: false // Last drag attempt is successfully
+      },
+      // Last drag attempt is successfully
+      successfully: false
     },
     impulse: {x: 0, y: 0, z: 0},
     canvas_pos: null,
@@ -230,7 +253,6 @@
       }
     }
     config.inertia.dumping.value = config.inertia.dumping.fast;
-    console.info('status.selected_region', status.selected_region)
     config.autorotate = false;
   }
 
