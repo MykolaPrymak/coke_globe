@@ -48,39 +48,39 @@
     texture_src: 'img/textures/dashboard_device_map_2048.png',
     // Texture with active regions. Using non-zero values from red channel.
     region_texture_src: 'img/textures/dashboard_country_map.png',
-    regions: {
-      'na': {
-        id: 1,
+    regions: [
+      {
+        color: '#010000',
         name: 'North America',
         url: 'http://google.com/?q=north%20america',
         // Png image with trasparency. Size is not must be equal to texture image.
         overlay: 'img/textures/dashboard_country_map.png'
       },
-      'sa': {
-        id: 2,
+      {
+        color: '#020000',
         name: 'South America',
         url: null,
         overlay: 'img/textures/earthbump1k.jpg'
       },
-      'af': {
-        id: 3,
+      {
+        color: '#030000',
         name: 'Africa',
         url: null,
         overlay: 'img/textures/earthlights1k.jpg'
       },
-      'eu': {
-        id: 4,
+      {
+        color: '#040000',
         name: 'Europe',
         url: null,
         overlay: 'img/textures/earthmap1k.jpg'
       },
-      'au': {
-        id: 5,
+      {
+        color: '#050000',
         name: 'Australia and Oceania',
         url: null,
         overlay: 'img/textures/earthcloudmap.png'
       }
-    },
+    ],
     // Opacity of the active region texture mixin
     overlayOpacity: 0.3
   };
@@ -121,7 +121,7 @@
     },
     impulse: {x: 0, y: 0, z: 0},
     canvas_pos: null,
-    selected_region: null,
+    selectedRegion: null,
     windowHalfX: window.innerWidth / 2,
     windowHalfY: window.innerHeight / 2,
     texture_original_img: null
@@ -308,11 +308,11 @@
       return;
     }
 
-    var regionId = getRegionIdAt(evt.clientX, evt.clientY);
-    if (regionId !== status.selected_region) {
-      status.selected_region = regionId;
+    var regionColor = getRegionColorAt(evt.clientX, evt.clientY);
+    if (regionColor !== status.selectedRegion) {
+      status.selectedRegion = regionColor;
     }
-    var region = getRegionInfo(regionId);
+    var region = getRegionInfo(regionColor);
     if (region) {
       showPopup(region);
     }
@@ -349,7 +349,14 @@
     return null;
   }
 
-  function getRegionIdAt(x, y) {
+  function rgbToHex(r, g, b) {
+      return "#" + _.map([r, g, b], function(val) {
+        var hex = val.toString(16);
+        return hex.length == 1 ? "0" + hex : hex;
+      }).join('');
+  }
+
+  function getRegionColorAt(x, y) {
     var raycaster = new THREE.Raycaster();
 
     raycaster.ray.origin.set(0, 0, 0);
@@ -392,9 +399,7 @@
 
         var color = getColorAt(uv);
         if (color !== null) {
-          if (color[0] !== 0) {
-            return color[0];
-          }
+          return rgbToHex(color[0], color[1], color[2]);
         }
         // Can't get color
     }
@@ -402,13 +407,14 @@
   }
 
   function highlightActiveRegion() {
-    var regionId = getRegionIdAt(status.mouseX + status.windowHalfX, status.mouseY + status.windowHalfY);
-    if (regionId !== status.selected_region) {
-      status.selected_region = regionId;
+    var regionColor = getRegionColorAt(status.mouseX + status.windowHalfX, status.mouseY + status.windowHalfY);
+    var region = getRegionInfo(regionColor);
+
+    if (regionColor !== status.selectedRegion) {
+      status.selectedRegion = regionColor;
 
       var globe = group.children[0];
-      var region = getRegionInfo(regionId);
-      if ((regionId !== null) && region && region.overlay) {
+      if ((regionColor !== null) && region && region.overlay) {
         if (!status.texture_original_img) {
           status.texture_original_img = globe.material.map.image;
         }
@@ -439,19 +445,18 @@
       }
     }
 
-    container.style.cursor = (regionId !== null) ? 'pointer' : 'auto';
-    if (regionId !== null) {
-      var region = getRegionInfo(regionId);
+    container.style.cursor = region ? 'pointer' : 'auto';
+    if (region) {
       angle_info.textContent = 'Visit the ' + region.name + ' (' + region.url + ')';
     }
   }
 
-  function getRegionInfo(regionId) {
-    return _.find(config.regions, function(region) {return region.id === regionId;})
+  function getRegionInfo(regionColor) {
+    return _.find(config.regions, function(region) {return region.color === regionColor;});
   }
 
   function showPopup(region) {
-    popup.innerHTML = '<span><h1>' + region.name + '</h1><p>Region id: ' + region.id + '</p><p>Region URL: <a href="' + region.url + '" target="_blanck">' + region.url + '</a></p></span>';
+    popup.innerHTML = '<span><h1>' + region.name + '</h1><p>Region color: ' + region.color + '</p><p>Region URL: <a href="' + region.url + '" target="_blanck">' + region.url + '</a></p></span>';
     popup.style.display = 'block';
   }
 
