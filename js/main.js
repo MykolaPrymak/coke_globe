@@ -18,55 +18,71 @@
 
   // Configuration is here ;)
   var config = {
-    autorotate: true, // Enable globe autorotation,
-    max_polar_angle: PI / 6, // Max angle to polar rotation. PI = 180 deg, PI/2 = 90 deg, PI /6 = 30 deg,
-    details: 32, // Globe detail level
-    rotation_step: 0.0045, // Rotation speed on drag/spining. Lower value - slower rotation.
-    drag_theshold: 5, // Min drag distance in px to start drag and not perform click on globe,
-    inertia: { // Inertia configuration
-      mass: 15, // Lower value - more massive globe
-      dumping: { // 1-0 range. Lower value - fastest globe stop
-        normal: 0.95, //Normal dumping value
-        fast: 0.3, // Dumping value if user click on the globe
+    // Enable globe autorotation,
+    autorotate: true,
+    // Max angle to polar rotation. PI = 180 deg, PI/2 = 90 deg, PI /6 = 30 deg,
+    max_polar_angle: PI / 6,
+    // Globe detail level
+    details: 32,
+    // Rotation speed on drag/spining. Lower value - slower rotation.
+    rotation_step: 0.0045,
+    // Min drag distance in px to start drag and not perform click on globe,
+    drag_theshold: 5,
+    // Inertia configuration
+    inertia: {
+      // Lower value - more massive globe
+      mass: 15,
+      // 1-0 range. Lower value - fastest globe stop
+      dumping: {
+        // Normal dumping value
+        normal: 0.95,
+        // Dumping value if user click on the globe
+        fast: 0.3
       },
-      start_theshold: 0.07, // Start inertia threshold. Lower value - much less move to start spinning.
-      stop_theshold: 0.004 // On which inertia value the spinning is stopped. (And start auto rotation if enabled.)
+      // Start inertia threshold. Lower value - much less move to start spinning.
+      start_theshold: 0.07,
+      // On which inertia value the spinning is stopped. (And start auto rotation if enabled.)
+      stop_theshold: 0.004
     },
-    texture_src: 'img/textures/dashboard_device_map_2048.png', // Main globe texture
-    region_texture_src: 'img/textures/dashboard_country_map.png', // Texture with active regions. Using non-zero values from red channel.
-    regions: {
-      'na': {
-        id: 1,
+    // Main globe texture
+    texture_src: 'img/textures/dashboard_device_map_2048.png',
+    // Texture with active regions. Using non-zero values from red channel.
+    region_texture_src: 'img/textures/dashboard_country_map.png',
+    regions: [
+      {
+        color: '#010000',
         name: 'North America',
         url: 'http://google.com/?q=north%20america',
-        overlay: 'img/textures/dashboard_country_map.png' // Png image with trasparency. Size is not must be equal to texture image.
+        // Png image with trasparency. Size is not must be equal to texture image.
+        overlay: 'img/textures/dashboard_country_map.png'
       },
-      'sa': {
-        id: 2,
+      {
+        color: '#020000',
         name: 'South America',
         url: null,
         overlay: 'img/textures/earthbump1k.jpg'
       },
-      'af': {
-        id: 3,
+      {
+        color: '#030000',
         name: 'Africa',
         url: null,
         overlay: 'img/textures/earthlights1k.jpg'
       },
-      'eu': {
-        id: 4,
+      {
+        color: '#040000',
         name: 'Europe',
         url: null,
         overlay: 'img/textures/earthmap1k.jpg'
       },
-      'au': {
-        id: 5,
+      {
+        color: '#050000',
         name: 'Australia and Oceania',
         url: null,
         overlay: 'img/textures/earthcloudmap.png'
       }
-    },
-    overlayOpacity: 0.3 // Opacity of the active region texture mixin
+    ],
+    // Opacity of the active region texture mixin
+    overlayOpacity: 0.3
   };
 
   // Tune values for mobile
@@ -85,20 +101,27 @@
 
   // Global variable to store the current status
   var status = {
-    mouseX: 0, // Mouse movement x.y position related to container center
+    // Mouse movement x.y position related to container center
+    mouseX: 0,
     mouseY: 0,
-    drag: { // Globe drag status
-      possible: true, // is possible?
-      started: false, // is started?
-      active: false, // is active?
+    // Globe drag status
+    drag: {
+      // is possible?
+      possible: true,
+      // is started?
+      started: false,
+      // is active?
+      active: false,
+      // Drag start options
       opts: {
         rotation: {x: 0, y: 0, z: 0}
-      }, // Drag start options
-      successfully: false // Last drag attempt is successfully
+      },
+      // Last drag attempt is successfully
+      successfully: false
     },
     impulse: {x: 0, y: 0, z: 0},
     canvas_pos: null,
-    selected_region: null,
+    selectedRegion: null,
     windowHalfX: window.innerWidth / 2,
     windowHalfY: window.innerHeight / 2,
     texture_original_img: null
@@ -232,7 +255,6 @@
       }
     }
     config.inertia.dumping.value = config.inertia.dumping.fast;
-    console.info('status.selected_region', status.selected_region)
     config.autorotate = false;
   }
 
@@ -272,7 +294,7 @@
       _.extend(status.drag.opts, {x: 0, y: 0, rotation: {x: 0, y: 0, z: 0}});
 
       // Enable auto-rotation only if we have spinning globe
-      config.autorotate = (abs(status.impulse.y) >= config.inertia.start_theshold);
+      //config.autorotate = (abs(status.impulse.y) >= config.inertia.start_theshold);
     }
 
     status.drag.active = false;
@@ -288,11 +310,11 @@
       return;
     }
 
-    var regionId = getRegionIdAt(evt.clientX, evt.clientY);
-    if (regionId !== status.selected_region) {
-      status.selected_region = regionId;
+    var regionColor = getRegionColorAt(evt.clientX, evt.clientY);
+    if (regionColor !== status.selectedRegion) {
+      status.selectedRegion = regionColor;
     }
-    var region = getRegionInfo(regionId);
+    var region = getRegionInfo(regionColor);
     if (region) {
       showPopup(region);
     }
@@ -329,7 +351,14 @@
     return null;
   }
 
-  function getRegionIdAt(x, y) {
+  function rgbToHex(r, g, b) {
+      return "#" + _.map([r, g, b], function(val) {
+        var hex = val.toString(16);
+        return hex.length == 1 ? "0" + hex : hex;
+      }).join('');
+  }
+
+  function getRegionColorAt(x, y) {
     var raycaster = new THREE.Raycaster();
 
     raycaster.ray.origin.set(0, 0, 0);
@@ -372,9 +401,7 @@
 
         var color = getColorAt(uv);
         if (color !== null) {
-          if (color[0] !== 0) {
-            return color[0];
-          }
+          return rgbToHex(color[0], color[1], color[2]);
         }
         // Can't get color
     }
@@ -382,56 +409,72 @@
   }
 
   function highlightActiveRegion() {
-    var regionId = getRegionIdAt(status.mouseX + status.windowHalfX, status.mouseY + status.windowHalfY);
-    if (regionId !== status.selected_region) {
-      status.selected_region = regionId;
+    var regionColor = getRegionColorAt(status.mouseX + status.windowHalfX, status.mouseY + status.windowHalfY);
+    var region = getRegionInfo(regionColor);
+
+    if (regionColor !== status.selectedRegion) {
+      status.selectedRegion = regionColor;
 
       var globe = group.children[0];
-      var region = getRegionInfo(regionId);
-      if ((regionId !== null) && region && region.overlay) {
+      if (region && region.overlay) {
         if (!status.texture_original_img) {
           status.texture_original_img = globe.material.map.image;
         }
-        var cnv = document.createElement('canvas');
-        cnv.width = status.texture_original_img.width;
-        cnv.height = status.texture_original_img.height;
-
-        ctx = cnv.getContext('2d');
-
-        var overlay = new Image();
-        overlay.onload = function() {
-          // Draw original image
-          ctx.drawImage(status.texture_original_img, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
-
-          // Mix with overlay
-          ctx.globalAlpha = config.overlayOpacity;
-          ctx.drawImage(overlay, 0, 0, overlay.width, overlay.height, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
-
-          // Put it back and request update
-          globe.material.map = new THREE.Texture(cnv);
-
-          globe.material.map.needsUpdate = true;
+        if (!region.overlayCache) {
+          var overlay = new Image();
+          overlay.onload = function() {
+            // Cache region image overlay
+            region.overlayCache = overlay;
+            if (regionColor !== status.selectedRegion) {
+              // Current region is changed and we cannot apply overlay
+              return;
+            }
+            applyImageOverlay(globe, overlay);
+          }
+          overlay.src = region.overlay;
+        } else {
+          applyImageOverlay(globe, region.overlayCache);
         }
-        overlay.src = region.overlay;
       } else if (status.texture_original_img) {
         globe.material.map = new THREE.Texture(status.texture_original_img);
         globe.material.map.needsUpdate = true;
       }
-    }
 
-    container.style.cursor = (regionId !== null) ? 'pointer' : 'auto';
-    if (regionId !== null) {
-      var region = getRegionInfo(regionId);
-      angle_info.textContent = 'Visit the ' + region.name + ' (' + region.url + ')';
+      container.style.cursor = region ? 'pointer' : 'auto';
+
+      if (region) {
+        angle_info.textContent = 'Visit the ' + region.name + ' (' + region.url + ')';
+      }
     }
+    angle_info.textContent = 'regionColor ' + regionColor;
   }
 
-  function getRegionInfo(regionId) {
-    return _.find(config.regions, function(region) {return region.id === regionId;})
+  function applyImageOverlay(globe, overlay) {
+      var cnv = document.createElement('canvas');
+      cnv.width = status.texture_original_img.width;
+      cnv.height = status.texture_original_img.height;
+
+      ctx = cnv.getContext('2d');
+
+      // Draw original image
+      ctx.drawImage(status.texture_original_img, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
+
+      // Mix with overlay
+      ctx.globalAlpha = config.overlayOpacity;
+      ctx.drawImage(overlay, 0, 0, overlay.width, overlay.height, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
+
+      // Put it back and request update
+      globe.material.map = new THREE.Texture(cnv);
+
+      globe.material.map.needsUpdate = true;
+  }
+
+  function getRegionInfo(regionColor) {
+    return _.find(config.regions, function(region) {return region.color === regionColor;});
   }
 
   function showPopup(region) {
-    popup.innerHTML = '<span><h1>' + region.name + '</h1><p>Region id: ' + region.id + '</p><p>Region URL: <a href="' + region.url + '" target="_blanck">' + region.url + '</a></p></span>';
+    popup.innerHTML = '<span><h1>' + region.name + '</h1><p>Region color: ' + region.color + '</p><p>Region URL: <a href="' + region.url + '" target="_blanck">' + region.url + '</a></p></span>';
     popup.style.display = 'block';
   }
 
