@@ -32,18 +32,45 @@
       stop_theshold: 0.004 // On which inertia value the spinning is stopped. (And start auto rotation if enabled.)
     },
     texture_src: 'img/textures/dashboard_device_map_2048.png', // Main globe texture
-    region_texture_src: 'img/textures/dashboard_country_map.png' // Texture with active regions. Using non-zero values from red channel.
+    region_texture_src: 'img/textures/dashboard_country_map.png', // Texture with active regions. Using non-zero values from red channel.
+    regions: {
+      'na': {
+        color_idx: 1,
+        name: 'North America',
+        url: 'http://google.com/?q=north%20america'
+      },
+      'sa': {
+        color_idx: 2,
+        name: 'South America',
+        url: null
+      },
+      'af': {
+        color_idx: 3,
+        name: 'Africa',
+        url: null
+      },
+      'eu': {
+        color_idx: 4,
+        name: 'Europe',
+        url: null
+      },
+      'au': {
+        color_idx: 5,
+        name: 'Australia and Oceania',
+        url: null
+      }
+    }
   };
 
   // Tune values for mobile
   if (features.isMobile) {
-    config.details = 16;
-    config.rotation_step = 0.006;
-
-    config.inertia.mass = 50;
+    _.extend(config, {
+      details: 16,
+      rotation_step: 0.006,
+      texture_src: 'img/textures/dashboard_device_map_1024.png'
+    });
+    config.inertia.mass= 50;
     config.inertia.dumping.normal = 0.9;
-    config.texture_src = 'img/textures/dashboard_device_map_1024.png';
-
   }
 
   // Init dumping value
@@ -55,23 +82,31 @@
     mouseY: 0,
     drag: { // Globe drag status
       possible: true, // is possible?
+      started: false, // is started?
       active: false, // is active?
-      opts: {}, // Drag start options
+      opts: {
+        rotation: {x: 0, y: 0, z: 0}
+      }, // Drag start options
       successfully: false // Last drag attempt is successfully
     },
     impulse: {x: 0, y: 0, z: 0},
     canvas_pos: null,
     selected_country: null,
     windowHalfX: window.innerWidth / 2,
-    windowHalfY: window.innerHeight / 2
+    windowHalfY: window.innerHeight / 2,
+    texture_original_img: null
   };
+
+  var color_picker = {
+    cnv: null,
+    ctx: null,
+    size: {w: 500, h: 500}
+  }
 
   // Render global variables
   var container, stats, angle_info;
   var camera, scene, renderer;
   var group;
-
-
 
   function init() {
     container = document.getElementById('container');
@@ -86,15 +121,21 @@
     angle_info.style.top = '0';
     container.appendChild(angle_info);
 
-    if (features.webgl) {
-      renderer = new THREE.WebGLRenderer({
-        antialias: !features.isMobile
-      });
-      angle_info.textContent = 'Using WegGL.';
-    } else if (features.canvas) {
+    try {
+     if (features.webgl) {
+        renderer = new THREE.WebGLRenderer({
+          antialias: !features.isMobile
+        });
+        angle_info.textContent = 'Using WegGL.';
+      }
+    } catch(e) {
+      console.error('Fail to create WebGl render');
+    }
+
+    if (!renderer && features.canvas) {
       renderer = new THREE.CanvasRenderer();
       angle_info.textContent = 'Using Canvas.'
-    } else {
+    } else if (!renderer) {
       angle_info.textContent = 'No supported render found';
       return false;
     }
@@ -136,6 +177,7 @@
       renderer.domElement.addEventListener('mousedown', onDocumentMouseDown, false);
       renderer.domElement.addEventListener('mousemove', onDocumentMouseMove, false);
       renderer.domElement.addEventListener('mouseup', onDocumentMouseUp, false);
+      renderer.domElement.addEventListener('mouseleave', onDocumentMouseUp, false);
     } else {
       window.addEventListener('touchstart', onDocumentMouseDown, false);
       window.addEventListener('touchmove', onDocumentMouseMove, false);
@@ -165,11 +207,12 @@
 
   function onDocumentMouseDown(evt) {
     if (status.drag.possible) {
+      status.drag.started = true;
       status.drag.successfully = false;
       //evt.preventDefault();
 
       mixTouchToEvent(evt);
-      //angle_info.textContent = 'Touch start';
+
       status.drag.opts = {
         x: evt.clientX - status.windowHalfX,
         y: evt.clientY - status.windowHalfY,
@@ -188,38 +231,43 @@
     status.mouseX = (evt.clientX - status.windowHalfX);
     status.mouseY = (evt.clientY - status.windowHalfY);
 
-    //checkIntersection(evt);
     status.drag.possible = true;
 
-    if (status.drag.opts && ((abs(status.mouseX - status.drag.opts.x) >= config.drag_theshold) || (abs(status.mouseY - status.drag.opts.y) >= config.drag_theshold))) {
+    if (status.drag.started && (
+        (abs(status.mouseX - status.drag.opts.x) >= config.drag_theshold) ||
+        (abs(status.mouseY - status.drag.opts.y) >= config.drag_theshold)
+    )) {
       status.drag.active = true;
       status.drag.successfully = true;
     }
   }
 
   function onDocumentMouseUp(evt) {
-    //angle_info.textContent += ' -> Touch end';
     var dragTime = (new Date()).getTime() - status.drag.opts.time;
 
-    var impulse = {
-      x: ((group.rotation.x - status.drag.opts.rotation.x) / dragTime) * config.inertia.mass,
-      y: ((group.rotation.y - status.drag.opts.rotation.y) / dragTime) * config.inertia.mass,
-      z: ((group.rotation.z - status.drag.opts.rotation.z) / dragTime) * config.inertia.mass
+    if (status.drag.active) {
+      _.each(status.drag.opts.rotation, function(angle, axis) {
+        var impulse = ((group.rotation[axis] - angle) / dragTime) * config.inertia.mass;
+
+        status.impulse[axis] += abs(impulse) >= config.inertia.start_theshold ? impulse : 0;
+      });
+
+      // Not allow spinning with x and z axis
+      status.impulse.x = 0;
+      status.impulse.z = 0;
+
+      // Reset drag options
+      _.extend(status.drag.opts, {x: 0, y: 0, rotation: {x: 0, y: 0, z: 0}});
+
+      // Enable auto-rotation only if we have spinning globe
+      config.autorotate = (abs(status.impulse.y) >= config.inertia.start_theshold);
     }
 
-    status.impulse.x += abs(impulse.x) >= config.inertia.start_theshold ? impulse.x : 0;
-    status.impulse.y += abs(impulse.y) >= config.inertia.start_theshold ? impulse.y : 0;
-    status.impulse.z += abs(impulse.z) >= config.inertia.start_theshold ? impulse.z : 0;
-
     status.drag.active = false;
-    status.drag.opts = {};
-
-    // Enable auto-rotation only if we have spinning globe
-    config.autorotate = (abs(status.impulse.y) >= config.inertia.start_theshold);
-
-    //checkIntersection(evt);
+    status.drag.started = false;
     //status.drag.possible = false;
 
+    // Restore general dumping factor
     config.inertia.dumping.value = config.inertia.dumping.normal;
   }
 
@@ -228,7 +276,7 @@
       return;
     }
 
-    var country_code = getCountryCode(evt.clientX, evt.clientY);
+    var country_code = getActiveAreaCode(evt.clientX, evt.clientY);
     if (country_code !== status.selected_country) {
       status.selected_country = country_code;
     }
@@ -243,15 +291,15 @@
     }
   }
 
-  function getCountryCode(mouseX, mouseY) {
+  function getActiveAreaCode(x, y) {
     var raycaster = new THREE.Raycaster();
 
     raycaster.ray.origin.set(0, 0, 0);
     camera.localToWorld(raycaster.ray.origin);
 
     raycaster.ray.direction.set(
-        ((mouseX - status.canvas_pos.left) / status.canvas_pos.width) * 2 - 1,
-        ((status.canvas_pos.top - mouseY) / status.canvas_pos.height) * 2 + 1,
+        ((x - status.canvas_pos.left) / status.canvas_pos.width) * 2 - 1,
+        ((status.canvas_pos.top - y) / status.canvas_pos.height) * 2 + 1,
     0.5).unproject(camera).sub(raycaster.ray.origin).normalize();
 
     var intersects = raycaster.intersectObject(scene, true);
@@ -281,142 +329,92 @@
         uv.x += barry.z * geometry.faceVertexUvs[0][faceIndex][2].x;
         uv.y += barry.z * geometry.faceVertexUvs[0][faceIndex][2].y;
 
-        // uv coordinates are straightforward to convert into lat/lon
-        //var lat = 180 * (uv.y - 0.5);
-        //var lon = 360 * (uv.x - 0.5);
-
         // Normalize
         uv.y = 1 - uv.y;
 
         var color = getColorAt(uv);
         if (color !== null) {
           if (color[0] !== 0) {
-            //angle_info.textContent = 'Country code: ' + color[0];
-            container.style.cursor = 'pointer';
             return color[0];
-          } else {
-            //angle_info.textContent = 'Empty space';
-            container.style.cursor = 'auto';
           }
-        } else {
-          angle_info.textContent = 'Can\'t get color';
         }
-    } else {
-      container.style.cursor = 'auto';
+        // Can't get color
     }
     return null
   }
 
-  var color_picker_canvas;
-  var color_picker_canvas_ctx;
-  var color_picker_canvas_size = {w: 500, h: 500};
-
-  function init_color_picker() {
+  function initColorPicker() {
     var img = new Image();
     img.onload = function() {
-      color_picker_canvas = document.createElement('canvas');
-      color_picker_canvas.width = color_picker_canvas_size.w;
-      color_picker_canvas.height = color_picker_canvas_size.h;
+      color_picker.cnv = document.createElement('canvas');
+      color_picker.cnv.width = color_picker.size.w;
+      color_picker.cnv.height = color_picker.size.h;
 
-      color_picker_canvas_ctx = color_picker_canvas.getContext('2d');
-      color_picker_canvas_ctx.drawImage(img, 0, 0, color_picker_canvas_size.w, color_picker_canvas_size.h);
+      color_picker.ctx = color_picker.cnv.getContext('2d');
+      color_picker.ctx.drawImage(img, 0, 0, color_picker.size.w, color_picker.size.h);
     };
     img.src = config.region_texture_src;
   }
 
   function getColorAt(pos) {
-    if (color_picker_canvas_ctx) {
-      var pixel = color_picker_canvas_ctx.getImageData(color_picker_canvas_size.w * pos.x, color_picker_canvas_size.h * pos.y, 1, 1);
-      //console.info(color_picker_canvas_size.w * pos.x, color_picker_canvas_size.h * pos.y)
+    if (color_picker.ctx) {
+      var pixel = color_picker.ctx.getImageData(color_picker.size.w * pos.x, color_picker.size.h * pos.y, 1, 1);
+
       // return rgba data as array
       return pixel.data;
     }
     return null;
   }
 
-  function checkIntersection(evt) {
-    if (!status.drag.active) {
-      var isHaveIntersection = getIntersection(evt);
-      if (isHaveIntersection !== status.drag.possible) {
-        container.style.cursor = isHaveIntersection || status.drag.active ? 'pointer' : 'auto';
-        status.drag.possible = isHaveIntersection;
+  function highlightCountry() {
+    var country_code = getActiveAreaCode(status.mouseX + status.windowHalfX, status.mouseY + status.windowHalfY);
+    if (country_code !== status.selected_country) {
+      status.selected_country = country_code;
+
+      var globe = group.children[0];
+      if (status.selected_country !== null) {
+
+        if (!status.texture_original_img) {
+          status.texture_original_img = globe.material.map.image;
+        }
+        var cnv = document.createElement('canvas');
+        cnv.width = status.texture_original_img.width;
+        cnv.height = status.texture_original_img.height;
+
+        ctx = cnv.getContext('2d');
+
+        ctx.drawImage(status.texture_original_img, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
+        ctx.globalAlpha = .3;
+        //ctx.globalCompositeOperation = 'lighter';
+        ctx.drawImage(color_picker.cnv, 0, 0, color_picker.size.w, color_picker.size.h, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
+
+        // Put it back and request update
+        globe.material.map = new THREE.Texture(cnv);
+
+        globe.material.map.needsUpdate = true;
+      } else if (status.texture_original_img) {
+        globe.material.map = new THREE.Texture(status.texture_original_img);
+        globe.material.map.needsUpdate = true;
       }
     }
+    container.style.cursor = (country_code !== null) ? 'pointer' : 'auto';
+
   }
 
-  function getIntersection(evt) {
-    var raycaster = new THREE.Raycaster();
-    var mouse = new THREE.Vector2();
-
-    // Find intersection with globe
-    mouse.x = ( evt.clientX / window.innerWidth ) * 2 - 1;
-    mouse.y = - ( evt.clientY / window.innerHeight ) * 2 + 1;
-
-    // update the picking ray with the camera and mouse position
-    raycaster.setFromCamera(mouse, camera);
-
-    var intersects = raycaster.intersectObjects(group.children);
-    if (intersects.length > 0) {
-      return intersects[0];
-    } else {
-      return false;
-    }
-  }
-
-  var original_image;
-  function animate() {
-    requestAnimationFrame(animate);
-
+  function rotateGlobe() {
     if (!status.drag.active) {
-      /*
-      if (status.impulse.x !== 0) {
-        if (abs(status.impulse.x) > config.inertia.stop_theshold) {
-          group.rotation.x += status.impulse.x;
-          status.impulse.x *= config.inertia.dumping.value;
-        } else {
-          status.impulse.x = 0;
+      // Globe spinning
+      _.each(status.impulse, function(impulse, axis) {
+        if (impulse !== 0) {
+          if (abs(impulse) > config.inertia.stop_theshold) {
+            group.rotation[axis] += impulse;
+            status.impulse[axis] *= config.inertia.dumping.value;
+          } else {
+            status.impulse[axis] = 0;
+          }
         }
-      }
-      */
-      if (status.impulse.y !== 0) {
-        if (abs(status.impulse.y) > config.inertia.stop_theshold) {
-          group.rotation.y += status.impulse.y;
-          status.impulse.y *= config.inertia.dumping.value;
-        } else {
-          status.impulse.y = 0;
-        }
-      }
-      /*
-      if (status.impulse.z !== 0) {
-        if (abs(status.impulse.z) > config.inertia.stop_theshold) {
-          group.rotation.z += status.impulse.z;
-          status.impulse.z *= config.inertia.dumping.value;
-        } else {
-          status.impulse.z = 0;
-        }
-      }
-      */
-      /*
-      group.rotation.y += config.rotation_step;
-      camera.position.x += (status.mouseX - camera.position.x) * 0.05;
-      camera.position.y += (- status.mouseY - camera.position.y) * 0.05;
-      camera.lookAt(scene.position);
+      });
 
-      // Reset the x rotation if no free move
-      if (group.rotation.x !== 0) {
-        var DOUBLE_PI = (PI * 2);
-        // Normalize angle
-        if (abs(group.rotation.x) > DOUBLE_PI) {
-          group.rotation.x = group.rotation.x % DOUBLE_PI;
-        }
-
-        // Reset if angle is too small
-        if (abs(group.rotation.x) < config.rotation_step) {
-          group.rotation.x = 0;
-        }
-        group.rotation.x += config.rotation_step * (group.rotation.x > 0 ? -1 : 1);
-      }
-      */
       if (config.autorotate) {
         group.rotation.y += config.rotation_step / 2;
       }
@@ -438,37 +436,15 @@
         group.rotation.x = -config.max_polar_angle;
       }
     }
+  }
 
-    var country_code = getCountryCode(status.mouseX + status.windowHalfX, status.mouseY + status.windowHalfY);
-    if (country_code !== status.selected_country) {
-      status.selected_country = country_code;
+  function animate() {
+    requestAnimationFrame(animate);
 
-      var globe = group.children[0];
-      if (status.selected_country !== null) {
-       // Draw random circle
-        if (!original_image) {
-          original_image = globe.material.map.image;
-        }
-        var cnv = document.createElement('canvas');
-        cnv.width = original_image.width;
-        cnv.height = original_image.height;
+    rotateGlobe();
 
-        ctx = cnv.getContext('2d');
-
-        ctx.drawImage(original_image, 0, 0, original_image.width, original_image.height);
-        ctx.globalAlpha = .3;
-        //ctx.globalCompositeOperation = 'lighter';
-        ctx.drawImage(color_picker_canvas, 0, 0, color_picker_canvas.width, color_picker_canvas.height, 0, 0, original_image.width, original_image.height);
-
-        // Put it back and request update
-        globe.material.map = new THREE.Texture(cnv);
-
-        globe.material.map.needsUpdate = true;
-      } else if (original_image) {
-        globe.material.map = new THREE.Texture(original_image);
-        globe.material.map.needsUpdate = true;
-      }
-    }
+    // Highlight country under the cursor
+    highlightCountry();
 
     render();
     stats.update();
@@ -484,6 +460,6 @@
     animate();
 
     // Initialize the color picker
-    init_color_picker();
+    initColorPicker();
   }
 })();
