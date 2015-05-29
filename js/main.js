@@ -45,25 +45,25 @@
         id: 2,
         name: 'South America',
         url: null,
-        overlay: 'img/textures/dashboard_country_map.png'
+        overlay: 'img/textures/earthbump1k.jpg'
       },
       'af': {
         id: 3,
         name: 'Africa',
         url: null,
-        overlay: 'img/textures/dashboard_country_map.png'
+        overlay: 'img/textures/earthlights1k.jpg'
       },
       'eu': {
         id: 4,
         name: 'Europe',
         url: null,
-        overlay: 'img/textures/dashboard_country_map.png'
+        overlay: 'img/textures/earthmap1k.jpg'
       },
       'au': {
         id: 5,
         name: 'Australia and Oceania',
         url: null,
-        overlay: 'img/textures/dashboard_country_map.png'
+        overlay: 'img/textures/earthcloudmap.png'
       }
     },
     overlayOpacity: 0.3 // Opacity of the active region texture mixin
