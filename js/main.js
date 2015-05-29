@@ -16,6 +16,7 @@
     }
   })();
 
+  // Configuration is here ;)
   var config = {
     autorotate: true, // Enable globe autorotation,
     max_polar_angle: PI / 6, // Max angle to polar rotation. PI = 180 deg, PI/2 = 90 deg, PI /6 = 30 deg,
@@ -35,31 +36,37 @@
     region_texture_src: 'img/textures/dashboard_country_map.png', // Texture with active regions. Using non-zero values from red channel.
     regions: {
       'na': {
-        color_idx: 1,
+        id: 1,
         name: 'North America',
-        url: 'http://google.com/?q=north%20america'
+        url: 'http://google.com/?q=north%20america',
+        overlay: 'img/textures/dashboard_country_map.png'
       },
       'sa': {
-        color_idx: 2,
+        id: 2,
         name: 'South America',
-        url: null
+        url: null,
+        overlay: 'img/textures/dashboard_country_map.png'
       },
       'af': {
-        color_idx: 3,
+        id: 3,
         name: 'Africa',
-        url: null
+        url: null,
+        overlay: 'img/textures/dashboard_country_map.png'
       },
       'eu': {
-        color_idx: 4,
+        id: 4,
         name: 'Europe',
-        url: null
+        url: null,
+        overlay: 'img/textures/dashboard_country_map.png'
       },
       'au': {
-        color_idx: 5,
+        id: 5,
         name: 'Australia and Oceania',
-        url: null
+        url: null,
+        overlay: 'img/textures/dashboard_country_map.png'
       }
-    }
+    },
+    overlayOpacity: 0.3 // Opacity of the active region texture mixin
   };
 
   // Tune values for mobile
@@ -91,23 +98,25 @@
     },
     impulse: {x: 0, y: 0, z: 0},
     canvas_pos: null,
-    selected_country: null,
+    selected_region: null,
     windowHalfX: window.innerWidth / 2,
     windowHalfY: window.innerHeight / 2,
     texture_original_img: null
   };
 
   var color_picker = {
+    img: null,
     cnv: null,
     ctx: null,
     size: {w: 500, h: 500}
   }
 
   // Render global variables
-  var container, stats, angle_info;
+  var container, stats, angle_info, popup;
   var camera, scene, renderer;
   var group;
 
+  // 3D engine init
   function init() {
     container = document.getElementById('container');
     scene = new THREE.Scene();
@@ -221,6 +230,7 @@
       }
     }
     config.inertia.dumping.value = config.inertia.dumping.fast;
+    console.info('status.selected_region', status.selected_region)
     config.autorotate = false;
   }
 
@@ -276,11 +286,14 @@
       return;
     }
 
-    var country_code = getActiveAreaCode(evt.clientX, evt.clientY);
-    if (country_code !== status.selected_country) {
-      status.selected_country = country_code;
+    var regionId = getRegionIdAt(evt.clientX, evt.clientY);
+    if (regionId !== status.selected_region) {
+      status.selected_region = regionId;
     }
-    angle_info.textContent = 'Click on ' + (country_code ? ('country ' + country_code) : 'ocean');
+    var region = getRegionInfo(regionId);
+    if (region) {
+      showPopup(region);
+    }
   }
 
   function mixTouchToEvent(evt) {
@@ -291,7 +304,30 @@
     }
   }
 
-  function getActiveAreaCode(x, y) {
+  function initColorPicker() {
+    color_picker.img = new Image();
+    color_picker.img.onload = function() {
+      color_picker.cnv = document.createElement('canvas');
+      color_picker.cnv.width = color_picker.size.w;
+      color_picker.cnv.height = color_picker.size.h;
+
+      color_picker.ctx = color_picker.cnv.getContext('2d');
+      color_picker.ctx.drawImage(color_picker.img, 0, 0, color_picker.size.w, color_picker.size.h);
+    };
+    color_picker.img.src = config.region_texture_src;
+  }
+
+  function getColorAt(pos) {
+    if (color_picker.ctx) {
+      var pixel = color_picker.ctx.getImageData(color_picker.size.w * pos.x, color_picker.size.h * pos.y, 1, 1);
+
+      // return rgba data as array
+      return pixel.data;
+    }
+    return null;
+  }
+
+  function getRegionIdAt(x, y) {
     var raycaster = new THREE.Raycaster();
 
     raycaster.ray.origin.set(0, 0, 0);
@@ -340,39 +376,16 @@
         }
         // Can't get color
     }
-    return null
-  }
-
-  function initColorPicker() {
-    var img = new Image();
-    img.onload = function() {
-      color_picker.cnv = document.createElement('canvas');
-      color_picker.cnv.width = color_picker.size.w;
-      color_picker.cnv.height = color_picker.size.h;
-
-      color_picker.ctx = color_picker.cnv.getContext('2d');
-      color_picker.ctx.drawImage(img, 0, 0, color_picker.size.w, color_picker.size.h);
-    };
-    img.src = config.region_texture_src;
-  }
-
-  function getColorAt(pos) {
-    if (color_picker.ctx) {
-      var pixel = color_picker.ctx.getImageData(color_picker.size.w * pos.x, color_picker.size.h * pos.y, 1, 1);
-
-      // return rgba data as array
-      return pixel.data;
-    }
     return null;
   }
 
-  function highlightCountry() {
-    var country_code = getActiveAreaCode(status.mouseX + status.windowHalfX, status.mouseY + status.windowHalfY);
-    if (country_code !== status.selected_country) {
-      status.selected_country = country_code;
+  function highlightActiveRegion() {
+    var regionId = getRegionIdAt(status.mouseX + status.windowHalfX, status.mouseY + status.windowHalfY);
+    if (regionId !== status.selected_region) {
+      status.selected_region = regionId;
 
       var globe = group.children[0];
-      if (status.selected_country !== null) {
+      if (status.selected_region !== null) {
 
         if (!status.texture_original_img) {
           status.texture_original_img = globe.material.map.image;
@@ -384,8 +397,7 @@
         ctx = cnv.getContext('2d');
 
         ctx.drawImage(status.texture_original_img, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
-        ctx.globalAlpha = .3;
-        //ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = config.overlayOpacity;
         ctx.drawImage(color_picker.cnv, 0, 0, color_picker.size.w, color_picker.size.h, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
 
         // Put it back and request update
@@ -397,8 +409,21 @@
         globe.material.map.needsUpdate = true;
       }
     }
-    container.style.cursor = (country_code !== null) ? 'pointer' : 'auto';
 
+    container.style.cursor = (regionId !== null) ? 'pointer' : 'auto';
+    if (regionId !== null) {
+      var region = getRegionInfo(regionId);
+      angle_info.textContent = 'Visit the ' + region.name + ' (' + region.url + ')';
+    }
+  }
+
+  function getRegionInfo(regionId) {
+    return _.find(config.regions, function(region) {return region.id === regionId;})
+  }
+
+  function showPopup(region) {
+    popup.innerHTML = '<span><h1>' + region.name + '</h1><p>Region id: ' + region.id + '</p><p>Region URL: <a href="' + region.url + '" target="_blanck">' + region.url + '</a></p></span>';
+    popup.style.display = 'block';
   }
 
   function rotateGlobe() {
@@ -444,7 +469,7 @@
     rotateGlobe();
 
     // Highlight country under the cursor
-    highlightCountry();
+    highlightActiveRegion();
 
     render();
     stats.update();
@@ -461,5 +486,10 @@
 
     // Initialize the color picker
     initColorPicker();
+
+    popup = document.getElementById('popup');
+    popup.addEventListener('click', function() {
+      popup.style.display = 'none';
+    }, false);
   }
 })();
