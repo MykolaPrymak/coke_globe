@@ -292,7 +292,7 @@
       _.extend(status.drag.opts, {x: 0, y: 0, rotation: {x: 0, y: 0, z: 0}});
 
       // Enable auto-rotation only if we have spinning globe
-      config.autorotate = (abs(status.impulse.y) >= config.inertia.start_theshold);
+      //config.autorotate = (abs(status.impulse.y) >= config.inertia.start_theshold);
     }
 
     status.drag.active = false;
@@ -414,41 +414,57 @@
       status.selectedRegion = regionColor;
 
       var globe = group.children[0];
-      if ((regionColor !== null) && region && region.overlay) {
+      if (region && region.overlay) {
         if (!status.texture_original_img) {
           status.texture_original_img = globe.material.map.image;
         }
-        var cnv = document.createElement('canvas');
-        cnv.width = status.texture_original_img.width;
-        cnv.height = status.texture_original_img.height;
-
-        ctx = cnv.getContext('2d');
-
-        var overlay = new Image();
-        overlay.onload = function() {
-          // Draw original image
-          ctx.drawImage(status.texture_original_img, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
-
-          // Mix with overlay
-          ctx.globalAlpha = config.overlayOpacity;
-          ctx.drawImage(overlay, 0, 0, overlay.width, overlay.height, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
-
-          // Put it back and request update
-          globe.material.map = new THREE.Texture(cnv);
-
-          globe.material.map.needsUpdate = true;
+        if (!region.overlayCache) {
+          var overlay = new Image();
+          overlay.onload = function() {
+            // Cache region image overlay
+            region.overlayCache = overlay;
+            if (regionColor !== status.selectedRegion) {
+              // Current region is changed and we cannot apply overlay
+              return;
+            }
+            applyImageOverlay(globe, overlay);
+          }
+          overlay.src = region.overlay;
+        } else {
+          applyImageOverlay(globe, region.overlayCache);
         }
-        overlay.src = region.overlay;
       } else if (status.texture_original_img) {
         globe.material.map = new THREE.Texture(status.texture_original_img);
         globe.material.map.needsUpdate = true;
       }
-    }
 
-    container.style.cursor = region ? 'pointer' : 'auto';
-    if (region) {
-      angle_info.textContent = 'Visit the ' + region.name + ' (' + region.url + ')';
+      container.style.cursor = region ? 'pointer' : 'auto';
+
+      if (region) {
+        angle_info.textContent = 'Visit the ' + region.name + ' (' + region.url + ')';
+      }
     }
+    angle_info.textContent = 'regionColor ' + regionColor;
+  }
+
+  function applyImageOverlay(globe, overlay) {
+      var cnv = document.createElement('canvas');
+      cnv.width = status.texture_original_img.width;
+      cnv.height = status.texture_original_img.height;
+
+      ctx = cnv.getContext('2d');
+
+      // Draw original image
+      ctx.drawImage(status.texture_original_img, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
+
+      // Mix with overlay
+      ctx.globalAlpha = config.overlayOpacity;
+      ctx.drawImage(overlay, 0, 0, overlay.width, overlay.height, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
+
+      // Put it back and request update
+      globe.material.map = new THREE.Texture(cnv);
+
+      globe.material.map.needsUpdate = true;
   }
 
   function getRegionInfo(regionColor) {
