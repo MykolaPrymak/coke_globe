@@ -53,6 +53,12 @@ body, #container, #container canvas {
   padding: 5px;
 }
 
+.angle_info {
+  position: absolute;
+  left: 100px;
+  top: 0;
+}
+
 .popup {
   position: fixed;
   display: none;
