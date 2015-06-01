@@ -153,7 +153,7 @@
     container = document.getElementById('container');
     scene = new THREE.Scene();
     group = new THREE.Group();
-return false;
+
     scene.add(group);
 
     angle_info = document.createElement('div');
