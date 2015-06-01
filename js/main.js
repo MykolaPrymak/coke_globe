@@ -20,6 +20,8 @@
   var config = {
     // Enable globe autorotation,
     autorotate: true,
+    // Restore autorotate after globe spinup
+    restore_autorotate: true,
     // Max angle to polar rotation. PI = 180 deg, PI/2 = 90 deg, PI /6 = 30 deg,
     max_polar_angle: PI / 6,
     // Globe detail level
@@ -82,7 +84,7 @@
       }
     ],
     // Opacity of the active region texture mixin
-    overlayOpacity: 1
+    overlay_opacity: 1
   };
 
   // Tune values for mobile
@@ -110,6 +112,8 @@
       possible: true,
       // is started?
       started: false,
+      // is drag started outside of globe
+      started_outside: false,
       // is active?
       active: false,
       // Drag start options
@@ -251,6 +255,11 @@
         rotation: {x: group.rotation.x, y: group.rotation.y, z: group.rotation.z},
         time: (new Date()).getTime()
       }
+
+      // If this is mobile and we start drag outside the globe (maybe we start a spinup globe rotation - don't highlight regions)
+      if (features.isMobile && (getRegionColorAt(status.mouseX + status.windowHalfX, status.mouseY + status.windowHalfY) === null)) {
+        status.drag.started_outside = true;
+      }
     }
     config.inertia.dumping.value = config.inertia.dumping.fast;
     config.autorotate = false;
@@ -292,11 +301,12 @@
       _.extend(status.drag.opts, {x: 0, y: 0, rotation: {x: 0, y: 0, z: 0}});
 
       // Enable auto-rotation only if we have spinning globe
-      //config.autorotate = (abs(status.impulse.y) >= config.inertia.start_theshold);
+      config.autorotate = config.restore_autorotate && (abs(status.impulse.y) >= config.inertia.start_theshold);
     }
 
     status.drag.active = false;
     status.drag.started = false;
+    status.drag.started_outside = false;
     //status.drag.possible = false;
 
     // Restore general dumping factor
@@ -421,6 +431,7 @@
         if (!region.overlayCache) {
           var overlay = new Image();
           overlay.onload = function() {
+            console.info('image loaded')
             if (regionColor !== status.selectedRegion) {
               // Current region is changed and we cannot apply overlay
               return;
@@ -458,7 +469,7 @@
       ctx.drawImage(status.texture_original_img, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
 
       // Mix with overlay
-      ctx.globalAlpha = config.overlayOpacity;
+      ctx.globalAlpha = config.overlay_opacity;
       ctx.drawImage(overlay, 0, 0, overlay.width, overlay.height, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
 
       // Put it back and request update
@@ -521,10 +532,20 @@
     rotateGlobe();
 
     // Highlight country under the cursor
-    highlightActiveRegion();
+    if (!status.drag.started_outside) {
+      // Skip if start spinup rotation on mobile.
+      highlightActiveRegion();
+    }
 
     render();
     stats.update();
+  }
+
+  function precacheOverlays() {
+    _.each(config.regions, function(region) {
+      var img = new Image();
+      img.src = region.overlay;
+    });
   }
 
   function render() {
@@ -543,5 +564,7 @@
     popup.addEventListener('click', function() {
       popup.style.display = 'none';
     }, false);
+
+    precacheOverlays();
   }
 })();
