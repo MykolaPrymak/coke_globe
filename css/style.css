@@ -24,7 +24,7 @@ body, #container, #container canvas {
   padding: 5px;
 }
 
-#popup {
+.popup {
   position: fixed;
   display: none;
   width: 100%;
@@ -33,14 +33,19 @@ body, #container, #container canvas {
   left: 0;
   background: rgba(0, 0, 0, 0.7);
 }
-#popup>span {
+
+.popup.show {
+  display: block;
+}
+
+.popup>span {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 200px;
-  height: 80px;
-  margin-left: -100px;
-  margin-top: -40px;
+  width: 250px;
+  height: 90px;
+  margin-left: -125px;
+  margin-top: -45px;
   border: 1px solid #D56442;
   border-radius: 5px;
   background: #F7E4DF;
@@ -53,15 +58,15 @@ body, #container, #container canvas {
            box-shadow: 0 0 15px #F7E4DF;
 }
 
-#popup h1 {
+.popup h1 {
   font: 17px Arial,sans-sherif;
   font-weight: bold;
   text-align: center;
   margin: 0 0 5px;
 }
-#popup p {
+.popup p {
   margin: 5px 0;
 }
-#popup a {
+.popup a {
   color: #DB795B;
 }
