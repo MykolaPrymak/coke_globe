@@ -56,31 +56,36 @@
         name: 'Corporate',
         url: 'http://google.com/?q=north%20america',
         // Png image with trasparency. Size is not must be equal to texture image.
-        overlay: 'img/textures/dashboard-device-map-mobile-corp_v2.png'
+        overlay: 'img/textures/dashboard-device-map-mobile-corp_v2.png',
+        map_coord: [426,326,378,281,345,383,416,368,461,402,466,440,545,509,604,534,591,494,567,487,569,476,589,464,608,485,614,455,679,406,697,382,651,363,683,338,600,304,606,291,464,305,478,325,433,319]
       },
       {
         color: '#71dd4d',
         name: 'Latin America',
         url: null,
-        overlay: 'img/textures/dashboard-device-map-mobile-la_v2.png'
+        overlay: 'img/textures/dashboard-device-map-mobile-la_v2.png',
+        map_coord: [629,513,618,527,618,540,604,565,620,599,645,616,626,706,640,734,661,704,668,686,716,647,733,626,755,576,718,553,695,529]
       },
       {
         color: '#e7f67d',
         name: 'Eurasian and Africa Group',
         url: null,
-        overlay: 'img/textures/dashboard-device-map-mobile-eag_v2.png'
+        overlay: 'img/textures/dashboard-device-map-mobile-eag_v2.png',
+        map_coord: [1031,476,1049,542,1110,538,1125,622,1131,617,1145,672,1174,651,1187,658,1207,626,1250,630,1253,585,1225,626,1207,620,1244,531,1267,532,1274,518,1256,500,1296,462,1286,431,1291,418,1417,319,1477,375,1453,318,1534,367,1592,350,1585,385,1696,333,1613,321,1495,314,1456,307,1461,291,1330,317,1256,318,1264,331,1217,339,1230,367,1202,366,1188,395,1220,415,1175,411,1171,419,1194,433,1199,453,1181,448,1172,438,1172,446,1108,423,1091,440,1078,436]
       },
       {
         color: '#5d3ddd',
         name: 'Europe',
         url: null,
-        overlay: 'img/textures/dashboard-device-map-mobile-eur_v2.png'
+        overlay: 'img/textures/dashboard-device-map-mobile-eur_v2.png',
+        map_coord: [1074,432,1056,406,1100,379,1083,375,1129,362,1109,347,1121,338,1122,318,1173,321,1190,310,1200,321,1230,327,1214,335,1230,365,1208,363,1167,431,1115,405]
       },
       {
         color: '#72a2ef',
         name: 'Asia Pacific Group',
         url: null,
-        overlay: 'img/textures/dashboard-device-map-mobile-apg_v2.png'
+        overlay: 'img/textures/dashboard-device-map-mobile-apg_v2.png',
+        map_coord: [1418,321,1294,422,1294,447,1347,530,1373,491,1448,526,1450,541,1418,528,1403,542,1439,555,1418,564,1513,569,1504,591,1461,618,1475,664,1513,653,1534,674,1589,670,1588,658,1602,642,1555,586,1597,581,1562,546,1529,556,1585,578,1552,587,1550,606,1528,575,1526,596,1507,585,1514,566,1465,562,1457,546,1485,562,1491,522,1461,540,1447,521,1432,487,1498,457,1495,482,1514,486,1570,429,1502,479,1504,456,1513,451,1513,428,1526,430,1519,413,1556,382,1455,321,1483,393]
       }
     ],
     // Opacity of the active region texture mixin
@@ -144,11 +149,11 @@
   var group;
 
   // 3D engine init
-  function init() {
+  function init_3d() {
     container = document.getElementById('container');
     scene = new THREE.Scene();
     group = new THREE.Group();
-
+return false;
     scene.add(group);
 
     angle_info = document.createElement('div');
@@ -548,26 +553,97 @@
     });
   }
 
+  function initPopup() {
+    popup = document.getElementById('popup');
+    popup.addEventListener('click', function() {
+      popup.style.display = 'none';
+    }, false);
+  }
+
+
+  // Image MAP falback
+  function init_image_map() {
+    container.innerHTML = '<img id="falback_image_bk" src="' + config.texture_src + '" alt="" />'+
+      '<img class="overlay_img" id="falback_image_overlay" />'+
+      '<img id="falback_image" src="' + config.texture_src + '" usemap="#region-maps" alt="" />'+
+      '<map name="region-maps" id="falback_image_map"></map>';
+
+    precacheOverlays();
+
+    window.addEventListener('resize', update_image_map, false);
+  }
+
+  function update_image_map() {
+    var wWidth = window.innerWidth, wHeight = window.innerHeight;
+    var MAP_ORITINAL_WIDTH = 2048, MAP_ORITINAL_HEIGHT = 1024;
+    var map_width_scale = wWidth / MAP_ORITINAL_WIDTH, map_height_scale = wHeight / MAP_ORITINAL_HEIGHT;
+    var map_el = document.getElementById('falback_image_map');
+    var img_overlay = document.getElementById('falback_image_overlay');
+
+    map_el.innerHTML = '';
+
+    _.each(config.regions, function(region) {
+      var area = document.createElement('area');
+      var coords = _.map(region.map_coord, function(coord, idx) {
+        if ((idx % 2) === 0) {
+          return coord * map_width_scale;
+        } else {
+          return coord * map_height_scale;
+        }
+      });
+      area.alt = region.name;
+      area.title = region.name;
+      area.href = region.url;
+      area.coords =  coords.join(',');
+      area.shape = 'poly';
+      area.target = '_self';
+
+      area.addEventListener('mouseover', handleOnIMMouseOver(region, img_overlay), false);
+      area.addEventListener('mouseout', handleOnIMMouseOut(region, img_overlay), false);
+      area.addEventListener('click', handleOnIMClick(region), false);
+
+      map_el.appendChild(area);
+    });
+  }
+
+  function handleOnIMMouseOver(region, img_overlay) {
+    return function() {
+      img_overlay.src = region.overlay;
+      img_overlay.style.display = 'block';
+    }
+  }
+
+  function handleOnIMMouseOut(region, img_overlay) {
+    return function() {
+      img_overlay.src = "";
+      img_overlay.style.display = 'none';
+    }
+  }
+
+  function handleOnIMClick(region) {
+    return function(evt) {
+      evt.preventDefault();
+      showPopup(region);
+    }
+  }
+
   function render() {
     renderer.render(scene, camera);
   }
 
   // Initialization
-  popup = document.getElementById('popup');
-  if (init()) {
+  initPopup();
+
+  if (init_3d()) {
     // If 3D globe initialization successfully the start animation and initialize the color picker
     animate();
 
     // Initialize the color picker
     initColorPicker();
 
-    popup.addEventListener('click', function() {
-      popup.style.display = 'none';
-    }, false);
-
     precacheOverlays();
   } else {
-    popup.innerHTML = '<span><h1>Your browser is too old.</h1><p>Update your browser to continue using this page.</p></span>';
-    popup.style.display = 'block';
+    init_image_map();
+    update_image_map();
   }
 })();
