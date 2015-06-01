@@ -553,6 +553,7 @@
   }
 
   // Initialization
+  popup = document.getElementById('popup');
   if (init()) {
     // If 3D globe initialization successfully the start animation and initialize the color picker
     animate();
@@ -560,11 +561,13 @@
     // Initialize the color picker
     initColorPicker();
 
-    popup = document.getElementById('popup');
     popup.addEventListener('click', function() {
       popup.style.display = 'none';
     }, false);
 
     precacheOverlays();
+  } else {
+    popup.innerHTML = '<span><h1>Your browser is too old.</h1><p>Update your browser to continue using this page.</p></span>';
+    popup.style.display = 'block';
   }
 })();
