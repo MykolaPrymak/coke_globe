@@ -45,44 +45,44 @@
       stop_theshold: 0.004
     },
     // Main globe texture
-    texture_src: 'img/textures/dashboard_device_map_2048.png',
+    texture_src: 'img/textures/dashboard-device-map-mobile_v2.jpg',
     // Texture with active regions. Using non-zero values from red channel.
-    region_texture_src: 'img/textures/dashboard_country_map.png',
+    region_texture_src: 'img/textures/dashboard-device-map-black-out_v2.png',
     regions: [
       {
-        color: '#010000',
-        name: 'North America',
+        color: '#ff2122',
+        name: 'Corporate',
         url: 'http://google.com/?q=north%20america',
         // Png image with trasparency. Size is not must be equal to texture image.
-        overlay: 'img/textures/dashboard_country_map.png'
+        overlay: 'img/textures/dashboard-device-map-mobile-corp_v2.png'
       },
       {
-        color: '#020000',
-        name: 'South America',
+        color: '#71dd4d',
+        name: 'Latin America',
         url: null,
-        overlay: 'img/textures/earthbump1k.jpg'
+        overlay: 'img/textures/dashboard-device-map-mobile-la_v2.png'
       },
       {
-        color: '#030000',
-        name: 'Africa',
+        color: '#e7f67d',
+        name: 'Eurasian and Africa Group',
         url: null,
-        overlay: 'img/textures/earthlights1k.jpg'
+        overlay: 'img/textures/dashboard-device-map-mobile-eag_v2.png'
       },
       {
-        color: '#040000',
+        color: '#5d3ddd',
         name: 'Europe',
         url: null,
-        overlay: 'img/textures/earthmap1k.jpg'
+        overlay: 'img/textures/dashboard-device-map-mobile-eur_v2.png'
       },
       {
-        color: '#050000',
-        name: 'Australia and Oceania',
+        color: '#72a2ef',
+        name: 'Asia Pacific Group',
         url: null,
-        overlay: 'img/textures/earthcloudmap.png'
+        overlay: 'img/textures/dashboard-device-map-mobile-apg_v2.png'
       }
     ],
     // Opacity of the active region texture mixin
-    overlayOpacity: 0.3
+    overlayOpacity: 1
   };
 
   // Tune values for mobile
@@ -90,7 +90,7 @@
     _.extend(config, {
       details: 16,
       rotation_step: 0.006,
-      texture_src: 'img/textures/dashboard_device_map_1024.png'
+      texture_src: 'img/textures/dashboard-device-map-mobile_v2_1k.jpg'
     });
     config.inertia.mass= 50;
     config.inertia.dumping.normal = 0.9;
@@ -421,17 +421,17 @@
         if (!region.overlayCache) {
           var overlay = new Image();
           overlay.onload = function() {
-            // Cache region image overlay
-            region.overlayCache = overlay;
             if (regionColor !== status.selectedRegion) {
               // Current region is changed and we cannot apply overlay
               return;
             }
-            applyImageOverlay(globe, overlay);
+            // Cache region image overlay
+            region.overlayCache = applyImageOverlay(globe, overlay);
           }
           overlay.src = region.overlay;
         } else {
-          applyImageOverlay(globe, region.overlayCache);
+          globe.material.map = new THREE.Texture(region.overlayCache);
+          globe.material.map.needsUpdate = true;
         }
       } else if (status.texture_original_img) {
         globe.material.map = new THREE.Texture(status.texture_original_img);
@@ -465,6 +465,8 @@
       globe.material.map = new THREE.Texture(cnv);
 
       globe.material.map.needsUpdate = true;
+
+      return cnv;
   }
 
   function getRegionInfo(regionColor) {
