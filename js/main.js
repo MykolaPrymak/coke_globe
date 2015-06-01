@@ -1,4 +1,4 @@
-;(function(){
+;$(document).ready(function(){
   // Shorthand for Math
   var abs = Math.abs, sin = Math.sin, cos=Math.cos, PI = Math.PI;
 
@@ -18,6 +18,8 @@
 
   // Configuration is here ;)
   var config = {
+    // Force to use the 2D falback UI
+    force_2d_falback: true,
     // Enable globe autorotation,
     autorotate: true,
     // Restore autorotate after globe spinup
@@ -144,30 +146,27 @@
   }
 
   // Render global variables
-  var container, stats, angle_info, popup;
+  var $container = $('#container'), stats, $angle_info, $popup;
   var camera, scene, renderer;
   var group;
 
   // 3D engine init
   function init_3d() {
-    container = document.getElementById('container');
     scene = new THREE.Scene();
     group = new THREE.Group();
 
     scene.add(group);
 
-    angle_info = document.createElement('div');
-    angle_info.style.position = 'absolute';
-    angle_info.style.left = '100px';
-    angle_info.style.top = '0';
-    container.appendChild(angle_info);
+    $angle_info = $('<div />');
+    $angle_info.addClass('angle_info');
+    $container.append($angle_info);
 
     try {
      if (features.webgl) {
         renderer = new THREE.WebGLRenderer({
           antialias: !features.isMobile
         });
-        angle_info.textContent = 'Using WegGL.';
+        $angle_info.text('Using WegGL.');
       }
     } catch(e) {
       console.error('Fail to create WebGl render');
@@ -175,12 +174,12 @@
 
     if (!renderer && features.canvas) {
       renderer = new THREE.CanvasRenderer();
-      angle_info.textContent = 'Using Canvas.'
+      $angle_info.text('Using Canvas.');
     } else if (!renderer) {
-      angle_info.textContent = 'No supported render found';
+      $angle_info.text('No supported render found');
       return false;
     }
-    angle_info.textContent += (features.isMobile ? ' On mobile' : ' On desktop');
+    $angle_info.text($angle_info.text() + (features.isMobile ? ' On mobile' : ' On desktop'));
 
     THREE.ImageUtils.crossOrigin = "";
     renderer.setClearColor(0xFFFCFB, 1);
@@ -202,36 +201,36 @@
 
     group.add(earthMesh);
 
-    container.appendChild(renderer.domElement);
+    $container.append(renderer.domElement);
 
     // Stats
     /*
     stats = new Stats();
     stats.domElement.style.position = 'absolute';
     stats.domElement.style.top = '0';
-    container.appendChild(stats.domElement);
+    $container.append(stats.domElement);
     */
 
 
     // Add event listeners
-    window.addEventListener('resize', onWindowResize, false);
+    $(window).on('resize', onWindowResize);
 
     if (!features.acceptTouch) {
-      renderer.domElement.addEventListener('mousedown', onDocumentMouseDown, false);
-      renderer.domElement.addEventListener('mousemove', onDocumentMouseMove, false);
-      renderer.domElement.addEventListener('mouseup', onDocumentMouseUp, false);
-      renderer.domElement.addEventListener('mouseleave', onDocumentMouseUp, false);
+      $(renderer.domElement).on('mousedown', onDocumentMouseDown)
+                            .on('mousemove', onDocumentMouseMove)
+                            .on('mouseup', onDocumentMouseUp)
+                            .on('mouseleave', onDocumentMouseUp);
     } else {
-      window.addEventListener('touchstart', onDocumentMouseDown, false);
-      window.addEventListener('touchmove', onDocumentMouseMove, false);
-      window.addEventListener('touchend', onDocumentMouseUp, false);
+      $(window).on('touchstart', onDocumentMouseDown)
+               .on('touchmove', onDocumentMouseMove)
+               .on('touchend', onDocumentMouseUp);
 
-      angle_info.textContent += ' Accept touches.';
+      $angle_info.text($angle_info.text() + ' Accept touches.');
     }
-    renderer.domElement.addEventListener('click', onDocumentClick, false);
+    $(renderer.domElement).click(onDocumentClick);
 
     // Get canvas position/size for use in detection func. Not supported by all~!!!!!!!!!!!!!
-    status.canvas_pos = renderer.domElement.getBoundingClientRect();
+    status.canvas_pos = getRenderClientRect();
     return true;
   }
 
@@ -245,7 +244,12 @@
 
     renderer.setSize(window.innerWidth, window.innerHeight);
 
-    status.canvas_pos = renderer.domElement.getBoundingClientRect();
+    status.canvas_pos = getRenderClientRect();
+  }
+
+  function getRenderClientRect() {
+    var $render = $(renderer.domElement);
+    return _.extend($render.offset(), {width: $render.width(), height: $render.height()});
   }
 
   function onDocumentMouseDown(evt) {
@@ -336,8 +340,9 @@
   }
 
   function mixTouchToEvent(evt) {
-    if (features.acceptTouch &&  evt.touches && (evt.touches.length > 0)) {
-      var touch = evt.touches[0];
+    var originalEvent = evt.originalEvent;
+    if (features.acceptTouch &&  originalEvent.touches && (originalEvent.touches.length > 0)) {
+      var touch = originalEvent.touches[0];
       evt.clientX = touch.clientX;
       evt.clientY = touch.clientY;
     }
@@ -438,7 +443,6 @@
         if (!region.overlayCache) {
           var overlay = new Image();
           overlay.onload = function() {
-            console.info('image loaded')
             if (regionColor !== status.selectedRegion) {
               // Current region is changed and we cannot apply overlay
               return;
@@ -456,13 +460,13 @@
         globe.material.map.needsUpdate = true;
       }
 
-      container.style.cursor = region ? 'pointer' : 'auto';
+      $container.css('cursor', (region ? 'pointer' : 'auto'));
 
       if (region) {
-        angle_info.textContent = 'Visit the ' + region.name + ' (' + region.url + ')';
+        $angle_info.text('Visit the ' + region.name + ' (' + region.url + ')');
       }
     }
-    angle_info.textContent = 'regionColor ' + regionColor;
+    $angle_info.text('regionColor ' + regionColor);
   }
 
   function applyImageOverlay(globe, overlay) {
@@ -491,9 +495,16 @@
     return _.find(config.regions, function(region) {return region.color === regionColor;});
   }
 
+  function initPopup() {
+    $popup = $('#popup');
+    $popup.click(function() {
+      $popup.hide();
+    });
+  }
+
   function showPopup(region) {
-    popup.innerHTML = '<span><h1>' + region.name + '</h1><p>Region color: ' + region.color + '</p><p>Region URL: <a href="' + region.url + '" target="_blanck">' + region.url + '</a></p></span>';
-    popup.style.display = 'block';
+    $popup.html('<span><h1>' + region.name + '</h1><p>Region color: ' + region.color + '</p><p>Region URL: <a href="' + region.url + '" target="_blanck">' + region.url + '</a></p></span>');
+    $popup.show();
   }
 
   function rotateGlobe() {
@@ -555,37 +566,29 @@
     });
   }
 
-  function initPopup() {
-    popup = document.getElementById('popup');
-    popup.addEventListener('click', function() {
-      popup.style.display = 'none';
-    }, false);
-  }
-
-
   // Image MAP falback
   function init_image_map() {
-    container.innerHTML = '<img id="falback_image_bk" src="' + config.texture_src + '" alt="" />'+
+    $container.html('<img id="falback_image_bk" src="' + config.texture_src + '" alt="" />'+
       '<img class="overlay_img" id="falback_image_overlay" />'+
       '<img id="falback_image" src="' + config.texture_src + '" usemap="#region-maps" alt="" />'+
-      '<map name="region-maps" id="falback_image_map"></map>';
+      '<map name="region-maps" id="falback_image_map"></map>');
 
     precacheOverlays();
 
-    window.addEventListener('resize', update_image_map, false);
+    $(window).on('resize', update_image_map);
   }
 
   function update_image_map() {
     var wWidth = window.innerWidth, wHeight = window.innerHeight;
     var MAP_ORITINAL_WIDTH = 2048, MAP_ORITINAL_HEIGHT = 1024;
     var map_width_scale = wWidth / MAP_ORITINAL_WIDTH, map_height_scale = wHeight / MAP_ORITINAL_HEIGHT;
-    var map_el = document.getElementById('falback_image_map');
-    var img_overlay = document.getElementById('falback_image_overlay');
+    var $map = $('#falback_image_map');
+    var img_overlay = $('#falback_image_overlay')[0];
 
-    map_el.innerHTML = '';
+    $map.html('');
 
     _.each(config.regions, function(region) {
-      var area = document.createElement('area');
+      var $area = $('<area />');
       var coords = _.map(region.map_coord, function(coord, idx) {
         if ((idx % 2) === 0) {
           return coord * map_width_scale;
@@ -593,18 +596,21 @@
           return coord * map_height_scale;
         }
       });
-      area.alt = region.name;
-      area.title = region.name;
-      area.href = region.url;
-      area.coords =  coords.join(',');
-      area.shape = 'poly';
-      area.target = '_self';
+      $area.attr({
+        alt: region.name,
+        title: region.name,
+        href: region.url,
+        coords: coords.join(','),
+        shape: 'poly',
+        target: '_self'
+      });
 
-      area.addEventListener('mouseover', handleOnIMMouseOver(region, img_overlay), false);
-      area.addEventListener('mouseout', handleOnIMMouseOut(region, img_overlay), false);
-      area.addEventListener('click', handleOnIMClick(region), false);
+      $area.on('mouseover', handleOnIMMouseOver(region, img_overlay))
+           .on('mousemove', handleOnIMMouseOver(region, img_overlay))
+           .on('mouseout', handleOnIMMouseOut(region, img_overlay))
+           .on('click', handleOnIMClick(region));
 
-      map_el.appendChild(area);
+      $map.append($area);
     });
   }
 
@@ -636,7 +642,7 @@
   // Initialization
   initPopup();
 
-  if (init_3d()) {
+  if (!config.force_2d_falback && init_3d()) {
     // If 3D globe initialization successfully the start animation and initialize the color picker
     animate();
 
@@ -648,4 +654,4 @@
     init_image_map();
     update_image_map();
   }
-})();
+});
