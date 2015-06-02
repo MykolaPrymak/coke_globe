@@ -1,5 +1,5 @@
 ;$(document).ready(function(){
-  // Shorthand for Math
+  // Shorthand for some math functions
   var abs = Math.abs, sin = Math.sin, cos=Math.cos, PI = Math.PI;
 
   // Feature detection
@@ -16,49 +16,53 @@
     }
   })();
 
-  // Configuration is here ;)
+  // Global configuration
   var config = {
-    // Force to use the 2D falback UI
-    force_2d_falback: false,
-    // Enable globe autorotation,
+    // Force to use the 2D fallback UI
+    force_2d_fallback: false,
+    // Enable/disable globe autorotation,
     autorotate: true,
     // Restore autorotate after globe spinup
     restore_autorotate: true,
-    // Max angle to polar rotation. PI = 180 deg, PI/2 = 90 deg, PI /6 = 30 deg,
+    // Max polar rotation angle. PI = 180 deg, PI/2 = 90 deg, PI /6 = 30 deg,
     max_polar_angle: PI / 6,
     // Globe detail level
     details: 32,
     // Rotation speed on drag/spining. Lower value - slower rotation.
     rotation_step: 0.0045,
-    // Min drag distance in px to start drag and not perform click on globe,
+    // Minimum drag distance in px required to start dragging and not treat it as a click on globe
     drag_theshold: 5,
     // Inertia configuration
     inertia: {
-      // Lower value - more massive globe
+      // Reduce to increase "massiveness" of the globe
       mass: 15,
-      // 1-0 range. Lower value - fastest globe stop
-      dumping: {
-        // Normal dumping value
+      // 1-0 range. Lower the value - faster globe will stop
+      dampening: {
+        // Normal dampening value
         normal: 0.95,
-        // Dumping value if user click on the globe
+        // dampening value if user clicks on the globe
         fast: 0.3
       },
-      // Start inertia threshold. Lower value - much less move to start spinning.
+      // Starting inertia threshold. Lower value - less movement required to start spinning.
       start_theshold: 0.07,
-      // On which inertia value the spinning is stopped. (And start auto rotation if enabled.)
+      // Lower spinning speed threshold when globe is stopped (and auto-rotation starts if enabled)
       stop_theshold: 0.004
     },
     // Main globe texture
     texture_src: 'img/textures/dashboard-device-map-mobile_v2.jpg',
-    // Texture with active regions. Using non-zero values from red channel.
+    // Texture with active regions
     region_texture_src: 'img/textures/dashboard-device-map-black-out_v2.png',
     regions: [
       {
+        // Clickable color from active regions texture
         color: '#ff2122',
+        // Arbitrary name to be displayed in the popup
         name: 'Corporate',
+        // URL to open
         url: 'http://google.com/?q=north%20america',
-        // Png image with trasparency. Size is not must be equal to texture image.
+        // PNG image with trasparency
         overlay: 'img/textures/dashboard-device-map-mobile-corp_v2.png',
+        // Fallback UI coordinates
         map_coord: [426,326,378,281,345,383,416,368,461,402,466,440,545,509,604,534,591,494,567,487,569,476,589,464,608,485,614,455,679,406,697,382,651,363,683,338,600,304,606,291,464,305,478,325,433,319]
       },
       {
@@ -102,13 +106,13 @@
       texture_src: 'img/textures/dashboard-device-map-mobile_v2_1k.jpg'
     });
     config.inertia.mass= 50;
-    config.inertia.dumping.normal = 0.9;
+    config.inertia.dampening.normal = 0.9;
   }
 
-  // Init dumping value
-  config.inertia.dumping.value = config.inertia.dumping.normal;
+  // Initial dampening value
+  config.inertia.dampening.value = config.inertia.dampening.normal;
 
-  // Global variable to store the current status
+  // Global variable to store the current state
   var status = {
     // Mouse movement x.y position related to container center
     mouseX: 0,
@@ -145,12 +149,12 @@
     size: {w: 500, h: 500}
   }
 
-  // Render global variables
+  // Renderer global variables
   var $container = $('#container'), stats, $angle_info, $popup;
   var camera, scene, renderer;
   var group;
 
-  // 3D engine init
+  // 3D engine initialization
   function init_3d() {
     scene = new THREE.Scene();
     group = new THREE.Group();
@@ -208,7 +212,6 @@
     stats.domElement.style.position = 'absolute';
     stats.domElement.style.top = '0';
     $container.append(stats.domElement);
-
 
     // Add event listeners
     $(window).on('resize', onWindowResize);
@@ -270,7 +273,8 @@
         status.drag.started_outside = true;
       }
     }
-    config.inertia.dumping.value = config.inertia.dumping.fast;
+
+    config.inertia.dampening.value = config.inertia.dampening.fast;
     config.autorotate = false;
   }
 
@@ -302,7 +306,7 @@
         status.impulse[axis] += abs(impulse) >= config.inertia.start_theshold ? impulse : 0;
       });
 
-      // Not allow spinning with x and z axis
+      // Disable spinning on x and z axes
       status.impulse.x = 0;
       status.impulse.z = 0;
 
@@ -318,8 +322,8 @@
     status.drag.started_outside = false;
     //status.drag.possible = false;
 
-    // Restore general dumping factor
-    config.inertia.dumping.value = config.inertia.dumping.normal;
+    // Restore general dampening factor
+    config.inertia.dampening.value = config.inertia.dampening.normal;
   }
 
   function onDocumentClick(evt) {
@@ -423,6 +427,7 @@
         }
         // Can't get color
     }
+
     return null;
   }
 
@@ -512,7 +517,7 @@
         if (impulse !== 0) {
           if (abs(impulse) > config.inertia.stop_theshold) {
             group.rotation[axis] += impulse;
-            status.impulse[axis] *= config.inertia.dumping.value;
+            status.impulse[axis] *= config.inertia.dampening.value;
           } else {
             status.impulse[axis] = 0;
           }
@@ -640,7 +645,7 @@
   // Initialization
   initPopup();
 
-  if (!config.force_2d_falback && init_3d()) {
+  if (!config.force_2d_fallback && init_3d()) {
     // If 3D globe initialization successfully the start animation and initialize the color picker
     animate();
 
