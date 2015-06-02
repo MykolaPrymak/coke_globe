@@ -19,7 +19,7 @@
   // Configuration is here ;)
   var config = {
     // Force to use the 2D falback UI
-    force_2d_falback: true,
+    force_2d_falback: false,
     // Enable globe autorotation,
     autorotate: true,
     // Restore autorotate after globe spinup
