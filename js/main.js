@@ -1,114 +1,117 @@
 ;$(document).ready(function(){
-  // Shorthand for Math
+  // Shorthand for some math functions
   var abs = Math.abs, sin = Math.sin, cos=Math.cos, PI = Math.PI;
 
   // Feature detection
   var features = (function(){
-    var canvas_elem = document.createElement('canvas');
-    var canvas_support = !!canvas_elem.getContext('2d');
+    var canvasElem = document.createElement('canvas');
+    var canvasSupport = !!canvasElem.getContext('2d');
 
     return {
-      canvas: canvas_support,
-      canvastext: canvas_support && (canvas_elem.getContext('2d').fillText instanceof Function),
+      canvas: canvasSupport,
       webgl: !!window.WebGLRenderingContext,
       isMobile: !!(navigator.userAgent.match(/Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone/i)),
       acceptTouch: !!(('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch)
     }
   })();
 
-  // Configuration is here ;)
+  // Global configuration
   var config = {
-    // Force to use the 2D falback UI
-    force_2d_falback: false,
-    // Enable globe autorotation,
+    // Force to use the 2D fallback UI
+    force2dFallback: false,
+    // Enable/disable globe autorotation,
     autorotate: true,
     // Restore autorotate after globe spinup
-    restore_autorotate: true,
-    // Max angle to polar rotation. PI = 180 deg, PI/2 = 90 deg, PI /6 = 30 deg,
-    max_polar_angle: PI / 6,
+    restoreAutorotate: true,
+    // Max polar rotation angle. PI = 180 deg, PI/2 = 90 deg, PI /6 = 30 deg,
+    maxPolarAngle: PI / 6,
     // Globe detail level
     details: 32,
     // Rotation speed on drag/spining. Lower value - slower rotation.
-    rotation_step: 0.0045,
-    // Min drag distance in px to start drag and not perform click on globe,
-    drag_theshold: 5,
+    rotationStep: 0.0045,
+    // Minimum drag distance in px required to start dragging and not treat it as a click on globe
+    dragTheshold: 5,
     // Inertia configuration
     inertia: {
-      // Lower value - more massive globe
+      // Reduce to increase "massiveness" of the globe
       mass: 15,
-      // 1-0 range. Lower value - fastest globe stop
-      dumping: {
-        // Normal dumping value
+      // 1-0 range. Lower the value - faster globe will stop
+      dampening: {
+        // Normal dampening value
         normal: 0.95,
-        // Dumping value if user click on the globe
+        // dampening value if user clicks on the globe
         fast: 0.3
       },
-      // Start inertia threshold. Lower value - much less move to start spinning.
-      start_theshold: 0.07,
-      // On which inertia value the spinning is stopped. (And start auto rotation if enabled.)
-      stop_theshold: 0.004
+      // Starting inertia threshold. Lower value - less movement required to start spinning.
+      startTheshold: 0.07,
+      // Lower spinning speed threshold when globe is stopped (and auto-rotation starts if enabled)
+      stopTheshold: 0.004
     },
     // Main globe texture
-    texture_src: 'img/textures/dashboard-device-map-mobile_v2.jpg',
-    // Texture with active regions. Using non-zero values from red channel.
-    region_texture_src: 'img/textures/dashboard-device-map-black-out_v2.png',
+    textureSrc: 'img/textures/dashboard-device-map-mobile_v2.jpg',
+    // Texture with active regions
+    regionTextureSrc: 'img/textures/dashboard-device-map-black-out_v2.png',
     regions: [
       {
+        // Clickable color from active regions texture
         color: '#ff2122',
+        // Arbitrary name to be displayed in the popup
         name: 'Corporate',
+        // URL to open
         url: 'http://google.com/?q=north%20america',
-        // Png image with trasparency. Size is not must be equal to texture image.
+        // PNG image with trasparency
         overlay: 'img/textures/dashboard-device-map-mobile-corp_v2.png',
-        map_coord: [426,326,378,281,345,383,416,368,461,402,466,440,545,509,604,534,591,494,567,487,569,476,589,464,608,485,614,455,679,406,697,382,651,363,683,338,600,304,606,291,464,305,478,325,433,319]
+        // Fallback UI coordinates
+        mapCoord: [426,326,378,281,345,383,416,368,461,402,466,440,545,509,604,534,591,494,567,487,569,476,589,464,608,485,614,455,679,406,697,382,651,363,683,338,600,304,606,291,464,305,478,325,433,319]
       },
       {
         color: '#71dd4d',
         name: 'Latin America',
         url: 'http://google.com/?q=Mexico',
         overlay: 'img/textures/dashboard-device-map-mobile-la_v2.png',
-        map_coord: [629,513,618,527,618,540,604,565,620,599,645,616,626,706,640,734,661,704,668,686,716,647,733,626,755,576,718,553,695,529]
+        mapCoord: [629,513,618,527,618,540,604,565,620,599,645,616,626,706,640,734,661,704,668,686,716,647,733,626,755,576,718,553,695,529]
       },
       {
         color: '#e7f67d',
         name: 'Eurasian and Africa Group',
         url: 'http://google.com/?q=China',
         overlay: 'img/textures/dashboard-device-map-mobile-eag_v2.png',
-        map_coord: [1031,476,1049,542,1110,538,1125,622,1131,617,1145,672,1174,651,1187,658,1207,626,1250,630,1253,585,1225,626,1207,620,1244,531,1267,532,1274,518,1256,500,1296,462,1286,431,1291,418,1417,319,1477,375,1453,318,1534,367,1592,350,1585,385,1696,333,1613,321,1495,314,1456,307,1461,291,1330,317,1256,318,1264,331,1217,339,1230,367,1202,366,1188,395,1220,415,1175,411,1171,419,1194,433,1199,453,1181,448,1172,438,1172,446,1108,423,1091,440,1078,436]
+        mapCoord: [1031,476,1049,542,1110,538,1125,622,1131,617,1145,672,1174,651,1187,658,1207,626,1250,630,1253,585,1225,626,1207,620,1244,531,1267,532,1274,518,1256,500,1296,462,1286,431,1291,418,1417,319,1477,375,1453,318,1534,367,1592,350,1585,385,1696,333,1613,321,1495,314,1456,307,1461,291,1330,317,1256,318,1264,331,1217,339,1230,367,1202,366,1188,395,1220,415,1175,411,1171,419,1194,433,1199,453,1181,448,1172,438,1172,446,1108,423,1091,440,1078,436]
       },
       {
         color: '#5d3ddd',
         name: 'Europe',
         url: 'http://google.com/?q=France',
         overlay: 'img/textures/dashboard-device-map-mobile-eur_v2.png',
-        map_coord: [1074,432,1056,406,1100,379,1083,375,1129,362,1109,347,1121,338,1122,318,1173,321,1190,310,1200,321,1230,327,1214,335,1230,365,1208,363,1167,431,1115,405]
+        mapCoord: [1074,432,1056,406,1100,379,1083,375,1129,362,1109,347,1121,338,1122,318,1173,321,1190,310,1200,321,1230,327,1214,335,1230,365,1208,363,1167,431,1115,405]
       },
       {
         color: '#72a2ef',
         name: 'Asia Pacific Group',
         url: 'http://google.com/?q=kangaroo',
         overlay: 'img/textures/dashboard-device-map-mobile-apg_v2.png',
-        map_coord: [1418,321,1294,422,1294,447,1347,530,1373,491,1448,526,1450,541,1418,528,1403,542,1439,555,1418,564,1513,569,1504,591,1461,618,1475,664,1513,653,1534,674,1589,670,1588,658,1602,642,1555,586,1597,581,1562,546,1529,556,1585,578,1552,587,1550,606,1528,575,1526,596,1507,585,1514,566,1465,562,1457,546,1485,562,1491,522,1461,540,1447,521,1432,487,1498,457,1495,482,1514,486,1570,429,1502,479,1504,456,1513,451,1513,428,1526,430,1519,413,1556,382,1455,321,1483,393]
+        mapCoord: [1418,321,1294,422,1294,447,1347,530,1373,491,1448,526,1450,541,1418,528,1403,542,1439,555,1418,564,1513,569,1504,591,1461,618,1475,664,1513,653,1534,674,1589,670,1588,658,1602,642,1555,586,1597,581,1562,546,1529,556,1585,578,1552,587,1550,606,1528,575,1526,596,1507,585,1514,566,1465,562,1457,546,1485,562,1491,522,1461,540,1447,521,1432,487,1498,457,1495,482,1514,486,1570,429,1502,479,1504,456,1513,451,1513,428,1526,430,1519,413,1556,382,1455,321,1483,393]
       }
     ],
     // Opacity of the active region texture mixin
-    overlay_opacity: 1
+    overlayOpacity: 1
   };
 
   // Tune values for mobile
   if (features.isMobile) {
     _.extend(config, {
       details: 16,
-      rotation_step: 0.006,
-      texture_src: 'img/textures/dashboard-device-map-mobile_v2_1k.jpg'
+      rotationStep: 0.006,
+      textureSrc: 'img/textures/dashboard-device-map-mobile_v2_1k.jpg'
     });
     config.inertia.mass= 50;
-    config.inertia.dumping.normal = 0.9;
+    config.inertia.dampening.normal = 0.9;
   }
 
-  // Init dumping value
-  config.inertia.dumping.value = config.inertia.dumping.normal;
+  // Initial dampening value
+  config.inertia.dampening.value = config.inertia.dampening.normal;
 
-  // Global variable to store the current status
+  // Global variable to store the current state
   var status = {
     // Mouse movement x.y position related to container center
     mouseX: 0,
@@ -120,7 +123,7 @@
       // is started?
       started: false,
       // is drag started outside of globe
-      started_outside: false,
+      startedOutside: false,
       // is active?
       active: false,
       // Drag start options
@@ -131,42 +134,42 @@
       successfully: false
     },
     impulse: {x: 0, y: 0, z: 0},
-    canvas_pos: null,
+    canvasPos: null,
     selectedRegion: null,
     windowHalfX: window.innerWidth / 2,
     windowHalfY: window.innerHeight / 2,
-    texture_original_img: null
+    textureOriginalImg: null
   };
 
-  var color_picker = {
+  var colorPicker = {
     img: null,
     cnv: null,
     ctx: null,
-    size: {w: 500, h: 500}
+    size: {width: 512, height: 512}
   }
 
-  // Render global variables
-  var $container = $('#container'), stats, $angle_info, $popup;
+  // Renderer global variables
+  var $container = $('#container'), stats, $angleInfo, $popup;
   var camera, scene, renderer;
   var group;
 
-  // 3D engine init
-  function init_3d() {
+  // 3D engine initialization
+  function init3d() {
     scene = new THREE.Scene();
     group = new THREE.Group();
 
     scene.add(group);
 
-    $angle_info = $('<div />');
-    $angle_info.addClass('angle_info');
-    $container.append($angle_info);
+    $angleInfo = $('<div />');
+    $angleInfo.addClass('angle_info');
+    $container.append($angleInfo);
 
     try {
      if (features.webgl) {
         renderer = new THREE.WebGLRenderer({
           antialias: !features.isMobile
         });
-        $angle_info.text('Using WegGL.');
+        $angleInfo.text('Using WegGL.');
       }
     } catch(e) {
       console.error('Fail to create WebGl render');
@@ -174,12 +177,12 @@
 
     if (!renderer && features.canvas) {
       renderer = new THREE.CanvasRenderer();
-      $angle_info.text('Using Canvas.');
+      $angleInfo.text('Using Canvas.');
     } else if (!renderer) {
-      $angle_info.text('No supported render found');
+      $angleInfo.text('No supported render found');
       return false;
     }
-    $angle_info.text($angle_info.text() + (features.isMobile ? ' On mobile' : ' On desktop'));
+    $angleInfo.text($angleInfo.text() + (features.isMobile ? ' On mobile' : ' On desktop'));
 
     THREE.ImageUtils.crossOrigin = "";
     renderer.setClearColor(0xFFFCFB, 1);
@@ -194,7 +197,7 @@
     // Earth
     var geometry = new THREE.SphereGeometry(200, config.details, config.details);
     var material = new THREE.MeshBasicMaterial({
-      map: THREE.ImageUtils.loadTexture(config.texture_src),
+      map: THREE.ImageUtils.loadTexture(config.textureSrc),
       overdraw: 0.5
     });
     var earthMesh  = new THREE.Mesh(geometry, material);
@@ -211,7 +214,6 @@
     $container.append(stats.domElement);
     */
 
-
     // Add event listeners
     $(window).on('resize', onWindowResize);
 
@@ -225,12 +227,12 @@
                .on('touchmove', onDocumentMouseMove)
                .on('touchend', onDocumentMouseUp);
 
-      $angle_info.text($angle_info.text() + ' Accept touches.');
+      $angleInfo.text($angleInfo.text() + ' Accept touches.');
     }
     $(renderer.domElement).click(onDocumentClick);
 
     // Get canvas position/size for use in detection func. Not supported by all~!!!!!!!!!!!!!
-    status.canvas_pos = getRenderClientRect();
+    status.canvasPos = getRenderClientRect();
     return true;
   }
 
@@ -244,7 +246,7 @@
 
     renderer.setSize(window.innerWidth, window.innerHeight);
 
-    status.canvas_pos = getRenderClientRect();
+    status.canvasPos = getRenderClientRect();
   }
 
   function getRenderClientRect() {
@@ -269,10 +271,11 @@
 
       // If this is mobile and we start drag outside the globe (maybe we start a spinup globe rotation - don't highlight regions)
       if (features.isMobile && (getRegionColorAt(status.mouseX + status.windowHalfX, status.mouseY + status.windowHalfY) === null)) {
-        status.drag.started_outside = true;
+        status.drag.startedOutside = true;
       }
     }
-    config.inertia.dumping.value = config.inertia.dumping.fast;
+
+    config.inertia.dampening.value = config.inertia.dampening.fast;
     config.autorotate = false;
   }
 
@@ -286,8 +289,8 @@
     status.drag.possible = true;
 
     if (status.drag.started && (
-        (abs(status.mouseX - status.drag.opts.x) >= config.drag_theshold) ||
-        (abs(status.mouseY - status.drag.opts.y) >= config.drag_theshold)
+        (abs(status.mouseX - status.drag.opts.x) >= config.dragTheshold) ||
+        (abs(status.mouseY - status.drag.opts.y) >= config.dragTheshold)
     )) {
       status.drag.active = true;
       status.drag.successfully = true;
@@ -301,10 +304,10 @@
       _.each(status.drag.opts.rotation, function(angle, axis) {
         var impulse = ((group.rotation[axis] - angle) / dragTime) * config.inertia.mass;
 
-        status.impulse[axis] += abs(impulse) >= config.inertia.start_theshold ? impulse : 0;
+        status.impulse[axis] += abs(impulse) >= config.inertia.startTheshold ? impulse : 0;
       });
 
-      // Not allow spinning with x and z axis
+      // Disable spinning on x and z axes
       status.impulse.x = 0;
       status.impulse.z = 0;
 
@@ -312,16 +315,16 @@
       _.extend(status.drag.opts, {x: 0, y: 0, rotation: {x: 0, y: 0, z: 0}});
 
       // Enable auto-rotation only if we have spinning globe
-      config.autorotate = config.restore_autorotate && (abs(status.impulse.y) >= config.inertia.start_theshold);
+      config.autorotate = config.restoreAutorotate && (abs(status.impulse.y) >= config.inertia.startTheshold);
     }
 
     status.drag.active = false;
     status.drag.started = false;
-    status.drag.started_outside = false;
+    status.drag.startedOutside = false;
     //status.drag.possible = false;
 
-    // Restore general dumping factor
-    config.inertia.dumping.value = config.inertia.dumping.normal;
+    // Restore general dampening factor
+    config.inertia.dampening.value = config.inertia.dampening.normal;
   }
 
   function onDocumentClick(evt) {
@@ -349,21 +352,21 @@
   }
 
   function initColorPicker() {
-    color_picker.img = new Image();
-    color_picker.img.onload = function() {
-      color_picker.cnv = document.createElement('canvas');
-      color_picker.cnv.width = color_picker.size.w;
-      color_picker.cnv.height = color_picker.size.h;
+    colorPicker.img = new Image();
+    colorPicker.img.onload = function() {
+      colorPicker.cnv = document.createElement('canvas');
+      colorPicker.cnv.width = colorPicker.size.width;
+      colorPicker.cnv.height = colorPicker.size.height;
 
-      color_picker.ctx = color_picker.cnv.getContext('2d');
-      color_picker.ctx.drawImage(color_picker.img, 0, 0, color_picker.size.w, color_picker.size.h);
+      colorPicker.ctx = colorPicker.cnv.getContext('2d');
+      colorPicker.ctx.drawImage(colorPicker.img, 0, 0, colorPicker.size.width, colorPicker.size.height);
     };
-    color_picker.img.src = config.region_texture_src;
+    colorPicker.img.src = config.regionTextureSrc;
   }
 
   function getColorAt(pos) {
-    if (color_picker.ctx) {
-      var pixel = color_picker.ctx.getImageData(color_picker.size.w * pos.x, color_picker.size.h * pos.y, 1, 1);
+    if (colorPicker.ctx) {
+      var pixel = colorPicker.ctx.getImageData(colorPicker.size.width * pos.x, colorPicker.size.height * pos.y, 1, 1);
 
       // return rgba data as array
       return pixel.data;
@@ -385,8 +388,8 @@
     camera.localToWorld(raycaster.ray.origin);
 
     raycaster.ray.direction.set(
-        ((x - status.canvas_pos.left) / status.canvas_pos.width) * 2 - 1,
-        ((status.canvas_pos.top - y) / status.canvas_pos.height) * 2 + 1,
+        ((x - status.canvasPos.left) / status.canvasPos.width) * 2 - 1,
+        ((status.canvasPos.top - y) / status.canvasPos.height) * 2 + 1,
     0.5).unproject(camera).sub(raycaster.ray.origin).normalize();
 
     var intersects = raycaster.intersectObject(scene, true);
@@ -425,6 +428,7 @@
         }
         // Can't get color
     }
+
     return null;
   }
 
@@ -437,8 +441,8 @@
 
       var globe = group.children[0];
       if (region && region.overlay) {
-        if (!status.texture_original_img) {
-          status.texture_original_img = globe.material.map.image;
+        if (!status.textureOriginalImg) {
+          status.textureOriginalImg = globe.material.map.image;
         }
         if (!region.overlayCache) {
           var overlay = new Image();
@@ -455,33 +459,33 @@
           globe.material.map = new THREE.Texture(region.overlayCache);
           globe.material.map.needsUpdate = true;
         }
-      } else if (status.texture_original_img) {
-        globe.material.map = new THREE.Texture(status.texture_original_img);
+      } else if (status.textureOriginalImg) {
+        globe.material.map = new THREE.Texture(status.textureOriginalImg);
         globe.material.map.needsUpdate = true;
       }
 
       $container.css('cursor', (region ? 'pointer' : 'auto'));
 
       if (region) {
-        $angle_info.text('Visit the ' + region.name + ' (' + region.url + ')');
+        $angleInfo.text('Visit the ' + region.name + ' (' + region.url + ')');
       }
     }
-    $angle_info.text('regionColor ' + regionColor);
+    $angleInfo.text('regionColor ' + regionColor);
   }
 
   function applyImageOverlay(globe, overlay) {
       var cnv = document.createElement('canvas');
-      cnv.width = status.texture_original_img.width;
-      cnv.height = status.texture_original_img.height;
+      cnv.width = status.textureOriginalImg.width;
+      cnv.height = status.textureOriginalImg.height;
 
       ctx = cnv.getContext('2d');
 
       // Draw original image
-      ctx.drawImage(status.texture_original_img, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
+      ctx.drawImage(status.textureOriginalImg, 0, 0, status.textureOriginalImg.width, status.textureOriginalImg.height);
 
       // Mix with overlay
-      ctx.globalAlpha = config.overlay_opacity;
-      ctx.drawImage(overlay, 0, 0, overlay.width, overlay.height, 0, 0, status.texture_original_img.width, status.texture_original_img.height);
+      ctx.globalAlpha = config.overlayOpacity;
+      ctx.drawImage(overlay, 0, 0, overlay.width, overlay.height, 0, 0, status.textureOriginalImg.width, status.textureOriginalImg.height);
 
       // Put it back and request update
       globe.material.map = new THREE.Texture(cnv);
@@ -512,9 +516,9 @@
       // Globe spinning
       _.each(status.impulse, function(impulse, axis) {
         if (impulse !== 0) {
-          if (abs(impulse) > config.inertia.stop_theshold) {
+          if (abs(impulse) > config.inertia.stopTheshold) {
             group.rotation[axis] += impulse;
-            status.impulse[axis] *= config.inertia.dumping.value;
+            status.impulse[axis] *= config.inertia.dampening.value;
           } else {
             status.impulse[axis] = 0;
           }
@@ -522,11 +526,11 @@
       });
 
       if (config.autorotate) {
-        group.rotation.y += config.rotation_step / 2;
+        group.rotation.y += config.rotationStep / 2;
       }
     } else {
-      var xShift = ((status.mouseY - status.drag.opts.y) * (config.rotation_step / 2));
-      var yShift = ((status.mouseX - status.drag.opts.x) * (config.rotation_step / 2));
+      var xShift = ((status.mouseY - status.drag.opts.y) * (config.rotationStep / 2));
+      var yShift = ((status.mouseX - status.drag.opts.x) * (config.rotationStep / 2));
       var xAngle = status.drag.opts.rotation.x;
       var yAngle = status.drag.opts.rotation.y;
       var zAngle = status.drag.opts.rotation.z;
@@ -536,10 +540,10 @@
       //group.rotation.z = zAngle - (sin(xAngle) * yShift); // Azimutal
 
       // Max polar rotation
-      if (group.rotation.x > config.max_polar_angle) {
-        group.rotation.x = config.max_polar_angle;
-      } else if (group.rotation.x < -config.max_polar_angle) {
-        group.rotation.x = -config.max_polar_angle;
+      if (group.rotation.x > config.maxPolarAngle) {
+        group.rotation.x = config.maxPolarAngle;
+      } else if (group.rotation.x < -config.maxPolarAngle) {
+        group.rotation.x = -config.maxPolarAngle;
       }
     }
   }
@@ -550,7 +554,7 @@
     rotateGlobe();
 
     // Highlight country under the cursor
-    if (!status.drag.started_outside) {
+    if (!status.drag.startedOutside) {
       // Skip if start spinup rotation on mobile.
       highlightActiveRegion();
     }
@@ -567,35 +571,40 @@
   }
 
   // Image MAP falback
-  function init_image_map() {
-    $container.html('<img id="falback_image_bk" src="' + config.texture_src + '" alt="" />'+
+  function initImageMap() {
+    $container.html('<img id="falback_image_bk" src="' + config.textureSrc + '" alt="" />'+
       '<img class="overlay_img" id="falback_image_overlay" />'+
-      '<img id="falback_image" src="' + config.texture_src + '" usemap="#region-maps" alt="" />'+
+      '<img id="falback_image" src="' + config.textureSrc + '" usemap="#region-maps" alt="" />'+
       '<map name="region-maps" id="falback_image_map"></map>');
 
     precacheOverlays();
 
-    $(window).on('resize', update_image_map);
+    $(window).on('resize', updateImageMap);
   }
 
-  function update_image_map() {
+  function updateImageMap() {
     var wWidth = window.innerWidth, wHeight = window.innerHeight;
-    var MAP_ORITINAL_WIDTH = 2048, MAP_ORITINAL_HEIGHT = 1024;
-    var map_width_scale = wWidth / MAP_ORITINAL_WIDTH, map_height_scale = wHeight / MAP_ORITINAL_HEIGHT;
+    var mapOritinalWidth = 2048, mapOritinalHeight = 1024;
+    var mapWidthScale = wWidth / mapOritinalWidth, mapHeightScale = wHeight / mapOritinalHeight;
     var $map = $('#falback_image_map');
-    var img_overlay = $('#falback_image_overlay')[0];
+    var $imgOverlayElement = $('#falback_image_overlay');
 
+    // Remove the old image map
     $map.html('');
 
+    // Add new image map areas
     _.each(config.regions, function(region) {
       var $area = $('<area />');
-      var coords = _.map(region.map_coord, function(coord, idx) {
+
+      // Recalculate the image map area coords
+      var coords = _.map(region.mapCoord, function(coord, idx) {
         if ((idx % 2) === 0) {
-          return coord * map_width_scale;
+          return coord * mapWidthScale;
         } else {
-          return coord * map_height_scale;
+          return coord * mapHeightScale;
         }
       });
+
       $area.attr({
         alt: region.name,
         title: region.name,
@@ -605,26 +614,24 @@
         target: '_self'
       });
 
-      $area.on('mouseover', handleOnIMMouseOver(region, img_overlay))
-           .on('mousemove', handleOnIMMouseOver(region, img_overlay))
-           .on('mouseout', handleOnIMMouseOut(region, img_overlay))
+      $area.on('mouseover', handleOnIMMouseOver(region, $imgOverlayElement))
+           .on('mousemove', handleOnIMMouseOver(region, $imgOverlayElement))
+           .on('mouseout', handleOnIMMouseOut($imgOverlayElement))
            .on('click', handleOnIMClick(region));
 
       $map.append($area);
     });
   }
 
-  function handleOnIMMouseOver(region, img_overlay) {
+  function handleOnIMMouseOver(region, $imgOverlayElement) {
     return function() {
-      img_overlay.src = region.overlay;
-      img_overlay.style.display = 'block';
+      $imgOverlayElement.attr('src', region.overlay).show();
     }
   }
 
-  function handleOnIMMouseOut(region, img_overlay) {
+  function handleOnIMMouseOut($imgOverlayElement) {
     return function() {
-      img_overlay.src = "";
-      img_overlay.style.display = 'none';
+      $imgOverlayElement.attr('src', '').hide();
     }
   }
 
@@ -642,7 +649,7 @@
   // Initialization
   initPopup();
 
-  if (!config.force_2d_falback && init_3d()) {
+  if (!config.force2dFallback && init3d()) {
     // If 3D globe initialization successfully the start animation and initialize the color picker
     animate();
 
@@ -651,7 +658,7 @@
 
     precacheOverlays();
   } else {
-    init_image_map();
-    update_image_map();
+    initImageMap();
+    updateImageMap();
   }
 });
