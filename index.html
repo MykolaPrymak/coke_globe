@@ -20,7 +20,13 @@
   <link rel="stylesheet" type="text/css" media="screen,print" href="css/style.css" />
 </head>
 <body>
-  <div id="container"></div>
+  <div id="container">
+    <img id="falback_image_bk" alt="" src="" />
+    <img id="falback_image_overlay" class="overlay_img" />
+    <img id="falback_image" alt="" src="" useMap="#region-maps" hidefocus="true" />
+    <map id="falback_image_map" name="region-maps"></map>
+  </div>
+
   <div class="popup" id="popup"></div>
   <noscript>
     <div class="popup show">
