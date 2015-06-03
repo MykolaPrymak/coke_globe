@@ -5,11 +5,11 @@
   // Feature detection
   var features = (function(){
     var canvasElem = document.createElement('canvas');
-    var canvasSupport = !!canvasElem.getContext('2d');
+    var canvasSupport = !!canvasElem.getContext && canvasElem.getContext('2d');
 
     return {
       canvas: canvasSupport,
-      webgl: !!window.WebGLRenderingContext,
+      webgl: canvasSupport && !!window.WebGLRenderingContext,
       isMobile: !!(navigator.userAgent.match(/Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone/i)),
       acceptTouch: !!(('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch)
     }
@@ -136,8 +136,8 @@
     impulse: {x: 0, y: 0, z: 0},
     canvasPos: null,
     selectedRegion: null,
-    windowHalfX: window.innerWidth / 2,
-    windowHalfY: window.innerHeight / 2,
+    windowHalfX: getWindowInnerSize().width / 2,
+    windowHalfY: getWindowInnerSize().height / 2,
     textureOriginalImg: null
   };
 
@@ -159,6 +159,9 @@
     group = new THREE.Group();
 
     scene.add(group);
+
+    // Clean container
+    $container.html('');
 
     $angleInfo = $('<div />');
     $angleInfo.addClass('angle_info');
@@ -186,11 +189,13 @@
 
     THREE.ImageUtils.crossOrigin = "";
     renderer.setClearColor(0xFFFCFB, 1);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(status.windowHalfX * 2, status.windowHalfY * 2);
+    if ('devicePixelRatio' in window) {
+      renderer.setPixelRatio(window.devicePixelRatio);
+    }
 
     // Camera
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000 );
+    camera = new THREE.PerspectiveCamera(60, (status.windowHalfX * 2) / (status.windowHalfY * 2), 1, 10000 );
     camera.position.z = (camera.aspect < 1) ? 600 : 500;
     camera.lookAt(scene.position);
 
@@ -235,16 +240,19 @@
   }
 
   function onWindowResize() {
-    status.windowHalfX = window.innerWidth / 2;
-    status.windowHalfY = window.innerHeight / 2;
+    var windowSize = getWindowInnerSize();
+    status.windowHalfX = windowSize.width / 2;
+    status.windowHalfY = windowSize.height / 2;
 
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.position.z = (camera.aspect < 1) ? 600 : 500;
-    camera.updateProjectionMatrix();
+    if (features.canvas && camera) {
+      camera.aspect = (status.windowHalfX * 2) / (status.windowHalfY * 2);
+      camera.position.z = (camera.aspect < 1) ? 600 : 500;
+      camera.updateProjectionMatrix();
 
-    renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setSize(status.windowHalfX * 2, status.windowHalfY * 2);
 
-    status.canvasPos = getRenderClientRect();
+      status.canvasPos = getRenderClientRect();
+    }
   }
 
   function getRenderClientRect() {
@@ -465,10 +473,10 @@
       $container.css('cursor', (region ? 'pointer' : 'auto'));
 
       if (region) {
-        $angleInfo.text('Visit the ' + region.name + ' (' + region.url + ')');
+        //$angleInfo.text('Visit the ' + region.name + ' (' + region.url + ')');
       }
     }
-    $angleInfo.text('regionColor ' + regionColor);
+    //$angleInfo.text('regionColor ' + regionColor);
   }
 
   function applyImageOverlay(globe, overlay) {
@@ -505,7 +513,7 @@
   }
 
   function showPopup(region) {
-    $popup.html('<span><h1>' + region.name + '</h1><p>Region color: ' + region.color + '</p><p>Region URL: <a href="' + region.url + '" target="_blanck">' + region.url + '</a></p></span>');
+    $popup.html('<div class="overlay"></div><span><h1>' + region.name + '</h1><p>Region color: ' + region.color + '</p><p>Region URL: <a href="' + region.url + '" target="_blanck">' + region.url + '</a></p></span>');
     $popup.show();
   }
 
@@ -570,30 +578,25 @@
 
   // Image MAP falback
   function initImageMap() {
-    $container.html('<img id="falback_image_bk" src="' + config.textureSrc + '" alt="" />'+
-      '<img class="overlay_img" id="falback_image_overlay" />'+
-      '<img id="falback_image" src="' + config.textureSrc + '" usemap="#region-maps" alt="" />'+
-      '<map name="region-maps" id="falback_image_map"></map>');
+    $('#falback_image_bk').attr('src', config.textureSrc);
+    $('#falback_image').attr('src', config.textureSrc);
 
     precacheOverlays();
 
+    $(window).on('resize', onWindowResize);
     $(window).on('resize', updateImageMap);
   }
 
   function updateImageMap() {
-    var wWidth = window.innerWidth, wHeight = window.innerHeight;
+    var wWidth = status.windowHalfX * 2, wHeight = status.windowHalfY * 2;
     var mapOritinalWidth = 2048, mapOritinalHeight = 1024;
     var mapWidthScale = wWidth / mapOritinalWidth, mapHeightScale = wHeight / mapOritinalHeight;
     var $map = $('#falback_image_map');
     var $imgOverlayElement = $('#falback_image_overlay');
-
-    // Remove the old image map
-    $map.html('');
+    var html = [];
 
     // Add new image map areas
     _.each(config.regions, function(region) {
-      var $area = $('<area />');
-
       // Recalculate the image map area coords
       var coords = _.map(region.mapCoord, function(coord, idx) {
         if ((idx % 2) === 0) {
@@ -603,21 +606,21 @@
         }
       });
 
-      $area.attr({
-        alt: region.name,
-        title: region.name,
-        href: region.url,
-        coords: coords.join(','),
-        shape: 'poly',
-        target: '_self'
-      });
+      html.push('<area alt="'+region.name+'"title="'+region.name+'" href="'+region.url+'" target="_self" shape="poly" coords="'+coords.join(',')+'" />');
+    });
 
-      $area.on('mouseover', handleOnIMMouseOver(region, $imgOverlayElement))
+    // Push new image map
+    $map.html(html.join(''));
+
+    // Append handlers
+    var regionsElements = $map.children();
+    _.each(config.regions, function(region, idx) {
+      var $area = regionsElements.eq(idx);
+
+        $area.on('mouseover', handleOnIMMouseOver(region, $imgOverlayElement))
            .on('mousemove', handleOnIMMouseOver(region, $imgOverlayElement))
            .on('mouseout', handleOnIMMouseOut($imgOverlayElement))
            .on('click', handleOnIMClick(region));
-
-      $map.append($area);
     });
   }
 
@@ -644,19 +647,42 @@
     renderer.render(scene, camera);
   }
 
+  function getWindowInnerSize() {
+    var width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+    var height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+
+    return {width: width, height: height};
+  }
+
+  //Polyfill
+  if (!window.requestAnimationFrame) {
+    window.requestAnimationFrame = (function(){
+      return window.webkitRequestAnimationFrame ||
+        window.mozRequestAnimationFrame    ||
+        function( callback ){
+          window.setTimeout(callback, 1000 / 60);
+        };
+    })();
+  }
+
   // Initialization
   initPopup();
 
-  if (!config.force2dFallback && init3d()) {
-    // If 3D globe initialization successfully the start animation and initialize the color picker
-    animate();
+  try {
+    if (!config.force2dFallback && features.canvas && init3d()) {
+      // If 3D globe initialization successfully the start animation and initialize the color picker
+      animate();
 
-    // Initialize the color picker
-    initColorPicker();
+      // Initialize the color picker
+      initColorPicker();
 
-    precacheOverlays();
-  } else {
-    initImageMap();
-    updateImageMap();
+      precacheOverlays();
+    }
+  } finally {
+    if (!scene){
+      // 3D fail - use 2D fallback
+      initImageMap();
+      updateImageMap();
+    }
   }
 });
