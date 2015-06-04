@@ -154,7 +154,7 @@
   var group;
 
   // 3D engine initialization
-  function init3d() {
+  function init3d(globeTexture) {
     scene = new THREE.Scene();
     group = new THREE.Group();
 
@@ -202,9 +202,11 @@
     // Earth
     var geometry = new THREE.SphereGeometry(200, config.details, config.details);
     var material = new THREE.MeshBasicMaterial({
-      map: THREE.ImageUtils.loadTexture(config.textureSrc),
+      color: '#FFFCFB',
+      map: new THREE.Texture(globeTexture),
       overdraw: 0.5
     });
+    material.map.needsUpdate = true;
     var earthMesh  = new THREE.Mesh(geometry, material);
 
     group.add(earthMesh);
@@ -673,7 +675,7 @@
     var img = new Image();
     img.onload = function() {
       try {
-        if (!config.force2dFallback && features.canvas && init3d()) {
+        if (!config.force2dFallback && features.canvas && init3d(img)) {
           // If 3D globe initialization successfully the start animation and initialize the color picker
           animate();
 
