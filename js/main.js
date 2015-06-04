@@ -667,24 +667,36 @@
     })();
   }
 
-  // Initialization
-  initPopup();
+  function init() {
+    // Initialization
+    initPopup();
 
-  try {
-    if (!config.force2dFallback && features.canvas && init3d()) {
-      // If 3D globe initialization successfully the start animation and initialize the color picker
-      animate();
+    // Preload main texture before start some UI
+    var img = new Image();
+    img.onload = function() {
+      try {
+        if (!config.force2dFallback && features.canvas && init3d()) {
+          // If 3D globe initialization successfully the start animation and initialize the color picker
+          animate();
 
-      // Initialize the color picker
-      initColorPicker();
+          // Initialize the color picker
+          initColorPicker();
 
-      precacheOverlays();
-    }
-  } finally {
-    if (!scene){
-      // 3D fail - use 2D fallback
-      initImageMap();
-      updateImageMap();
-    }
+          precacheOverlays();
+        }
+      } finally {
+        if (!scene){
+          // 3D fail - use 2D fallback
+          initImageMap();
+          updateImageMap();
+        }
+      }
+      $('.loading').hide();
+    };
+    img.src = config.textureSrc;
   }
+
+  // Start
+  init();
+
 });
