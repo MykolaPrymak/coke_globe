@@ -707,13 +707,14 @@
           precacheOverlays();
         }
       } finally {
-        if (!scene){
+        if (!scene) {
           // 3D fail - use 2D fallback
           initImageMap();
           updateImageMap();
         }
+        // FF 3.6 is not run code after finally
+        $('.loading').hide();
       }
-      $('.loading').hide();
     };
     img.src = config.textureSrc;
   }
