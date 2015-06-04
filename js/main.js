@@ -2,14 +2,34 @@
   // Shorthand for some math functions
   var abs = Math.abs, sin = Math.sin, cos=Math.cos, PI = Math.PI;
 
+  var debug = (window.console && window.console.log) || function(){};
+
   // Feature detection
   var features = (function(){
     var canvasElem = document.createElement('canvas');
-    var canvasSupport = !!canvasElem.getContext && canvasElem.getContext('2d');
+    var canvasSupport = !!canvasElem.getContext && !!canvasElem.getContext('2d');
+
+    // WebGL
+    var webgl = false;
+    if (canvasSupport && !!window.WebGLRenderingContext) {
+        var webglContexts = ['webgl', 'experimental-webgl', 'moz-webgl', 'webkit-3d'], webGlContext = false;
+
+        _.find(webglContexts, function(contextName) {
+            try {
+              // Recreate canvas
+              canvasElem = document.createElement('canvas');
+              webGlContext = canvasElem.getContext(contextName);
+              if (webGlContext && typeof webGlContext.getParameter == "function") {
+                  webgl = true;
+              }
+            } catch(e) {}
+            return webgl;
+        });
+    }
 
     return {
       canvas: canvasSupport,
-      webgl: canvasSupport && !!window.WebGLRenderingContext,
+      webgl: webgl,
       isMobile: !!(navigator.userAgent.match(/Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone/i)),
       acceptTouch: !!(('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch)
     }
@@ -149,7 +169,8 @@
   }
 
   // Renderer global variables
-  var $container = $('#container'), stats, $angleInfo, $popup;
+  var $container = $('#container'), stats, $popup;
+  var $angleInfo;
   var camera, scene, renderer;
   var group;
 
@@ -175,7 +196,7 @@
         $angleInfo.text('Using WegGL.');
       }
     } catch(e) {
-      console.error('Fail to create WebGl render');
+      debug('Fail to create WebGl render');
     }
 
     if (!renderer && features.canvas) {
@@ -202,7 +223,6 @@
     // Earth
     var geometry = new THREE.SphereGeometry(200, config.details, config.details);
     var material = new THREE.MeshBasicMaterial({
-      color: '#FFFCFB',
       map: new THREE.Texture(globeTexture),
       overdraw: 0.5
     });

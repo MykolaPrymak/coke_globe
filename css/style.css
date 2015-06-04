@@ -71,6 +71,7 @@ body, #container, #container canvas {
   position: absolute;
   left: 100px;
   top: 0;
+  z-index: 999;
 }
 
 .popup {
