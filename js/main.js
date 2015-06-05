@@ -2,16 +2,17 @@
   // Shorthand for some math functions
   var abs = Math.abs, sin = Math.sin, cos=Math.cos, PI = Math.PI;
 
-  var debug = (window.console && window.console.log) || function(){};
-
   // Feature detection
   var features = (function(){
     var canvasElem = document.createElement('canvas');
     var canvasSupport = !!canvasElem.getContext && !!canvasElem.getContext('2d');
+    var isMobile = !!(navigator.userAgent.match(/Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone/i));
+    var isSafari = !!(navigator.userAgent.match(/Safari/i));
 
     // WebGL
     var webgl = false;
-    if (canvasSupport && !!window.WebGLRenderingContext) {
+    // Even not try to test Safari on desktop - it crash in some cases
+    if ((isMobile || !isSafari) && canvasSupport && !!window.WebGLRenderingContext) {
         var webglContexts = ['webgl', 'experimental-webgl', 'moz-webgl', 'webkit-3d'], webGlContext = false;
 
         _.find(webglContexts, function(contextName) {
@@ -27,10 +28,11 @@
         });
     }
 
+
     return {
       canvas: canvasSupport,
       webgl: webgl,
-      isMobile: !!(navigator.userAgent.match(/Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone/i)),
+      isMobile: isMobile,
       acceptTouch: !!(('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch)
     }
   })();
@@ -196,7 +198,7 @@
         $angleInfo.text('Using WegGL.');
       }
     } catch(e) {
-      debug('Fail to create WebGl render');
+      console.log('Fail to create WebGl render');
     }
 
     if (!renderer && features.canvas) {
@@ -686,6 +688,13 @@
         };
     })();
   }
+
+  if (!('console' in window) || true) {
+    var console = {
+      log: function() {}
+    };
+  }
+
 
   function init() {
     // Initialization
