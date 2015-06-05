@@ -13,7 +13,7 @@
 
     if (isSafari && !isMobile) {
       var results = userAgent.match(/Version\/(\d)/);
-      if ((results.length > 1) && !isNaN(parseInt(results[1]))) {
+      if (results && (results.length > 1) && !isNaN(parseInt(results[1]))) {
         safariVer = parseInt(results[1])
       }
     }
