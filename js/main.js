@@ -20,8 +20,7 @@
 
     // WebGL
     var webgl = false;
-    // Even not try to test Safari (version < 8) on desktop - it crash in some cases
-    if ((isMobile || !isSafari || (isSafari && (safariVer !== 7))) && canvasSupport && !!window.WebGLRenderingContext) {
+    if (canvasSupport && !!window.WebGLRenderingContext) {
         var webglContexts = ['webgl', 'experimental-webgl', 'moz-webgl', 'webkit-3d'], webGlContext = false;
 
         _.find(webglContexts, function(contextName) {
@@ -37,6 +36,10 @@
         });
     }
 
+    // Safari 7.x on desktop is crash in canvas mode - disable if not have WebGL
+    if (!isMobile && isSafari && (safariVer === 7) && !webgl) {
+      canvasSupport = false;
+    }
 
     return {
       canvas: canvasSupport,
