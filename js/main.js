@@ -6,13 +6,22 @@
   var features = (function(){
     var canvasElem = document.createElement('canvas');
     var canvasSupport = !!canvasElem.getContext && !!canvasElem.getContext('2d');
-    var isMobile = !!(navigator.userAgent.match(/Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone/i));
-    var isSafari = !!(navigator.userAgent.match(/Safari/i));
+    var userAgent = navigator.userAgent;
+    var isMobile = !!(userAgent.match(/Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone/i));
+    var isSafari = !!(userAgent.match(/Safari/i));
+    var safariVer = 0;
+
+    if (isSafari && !isMobile) {
+      var results = userAgent.match(/Version\/(\d)/);
+      if ((results.length > 1) && !isNaN(parseInt(results[1]))) {
+        safariVer = parseInt(results[1])
+      }
+    }
 
     // WebGL
     var webgl = false;
-    // Even not try to test Safari on desktop - it crash in some cases
-    if ((isMobile || !isSafari) && canvasSupport && !!window.WebGLRenderingContext) {
+    // Even not try to test Safari (version < 8) on desktop - it crash in some cases
+    if ((isMobile || !isSafari || (isSafari && (safariVer > 7))) && canvasSupport && !!window.WebGLRenderingContext) {
         var webglContexts = ['webgl', 'experimental-webgl', 'moz-webgl', 'webkit-3d'], webGlContext = false;
 
         _.find(webglContexts, function(contextName) {
@@ -689,8 +698,8 @@
     })();
   }
 
-  if (!('console' in window) || true) {
-    var console = {
+  if (!('console' in window)) {
+    window.console = {
       log: function() {}
     };
   }
