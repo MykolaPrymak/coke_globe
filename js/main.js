@@ -21,10 +21,7 @@
     // WebGL
     var webgl = false;
     // Even not try to test Safari (version < 8) on desktop - it crash in some cases
-    console.log('isSafari', isSafari, 'safariVer', safariVer, (isMobile || !isSafari || (isSafari && (safariVer > 7))), window.WebGLRenderingContext)
-
-    if ((isMobile || !isSafari || (isSafari && (safariVer > 7))) && canvasSupport && !!window.WebGLRenderingContext) {
-      console.log('Test webGL')
+    if ((isMobile || !isSafari || (isSafari && (safariVer !== 7))) && canvasSupport && !!window.WebGLRenderingContext) {
         var webglContexts = ['webgl', 'experimental-webgl', 'moz-webgl', 'webkit-3d'], webGlContext = false;
 
         _.find(webglContexts, function(contextName) {
@@ -35,10 +32,7 @@
               if (webGlContext && typeof webGlContext.getParameter == "function") {
                   webgl = true;
               }
-              console.log('3D context', contextName, 'is not accesible')
-            } catch(e) {
-              console.log('Fail to get 3D context', contextName)
-            }
+            } catch(e) {}
             return webgl;
         });
     }
